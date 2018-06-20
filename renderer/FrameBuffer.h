@@ -46,3 +46,58 @@ void FB_BindShadowTexture();
 void FB_SelectPrimary();
 void FB_SelectPostProcess();
 void FB_ResolveMultisampling( GLbitfield mask = GL_COLOR_BUFFER_BIT, GLenum filter = GL_NEAREST );
+
+class FrameBuffer {
+public:
+	~FrameBuffer();
+
+	static FrameBuffer * Create( GLuint width, GLuint height, int msaa = 0 );
+	static FrameBuffer * BackBuffer();
+
+	void CreateColorBuffer();
+	void CreateDepthStencilBuffer();
+
+	void AddColorTexture( idImage *colorTexture );
+	void AddDepthStencilTexture( idImage *depthStencilTexture );
+	void AddDepthStencilTextures( idImage *depthTexture, idImage *stencilTexture );
+
+	void Validate();
+
+	void Bind();
+	void BindDraw();
+	void BindRead();
+
+	void BlitFullTo( FrameBuffer *target, GLbitfield mask = GL_COLOR_BUFFER_BIT, GLenum filter = GL_NEAREST );
+
+	GLuint GetWidth() const { return width; }
+
+	GLuint GetHeight() const { return height; }
+
+private:
+	FrameBuffer( GLuint fbo, GLuint width, GLuint height, int msaa );
+
+	GLuint fbo;
+	GLuint colorBuffer;
+	GLuint depthStencilBuffer;
+
+	GLuint width;
+	GLuint height;
+	int msaa;
+};
+
+struct frameBuffers_t {
+	FrameBuffer *primary;
+	FrameBuffer *resolve;
+	FrameBuffer *lightgem;
+	FrameBuffer *backBuffer;
+	FrameBuffer *finalOutput;
+
+	FrameBuffer *currentDraw;
+	FrameBuffer *currentRead;
+
+	std::vector<FrameBuffer*> allFrameBuffers;
+};
+extern frameBuffers_t frameBuffers;
+
+void FB_InitFrameBuffers();
+void FB_ShutdownFrameBuffers();
