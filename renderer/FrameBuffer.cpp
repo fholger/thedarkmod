@@ -504,3 +504,221 @@ void FB_TogglePrimary( bool on ) {
 	else
 		LeavePrimary();
 }
+
+frameBuffers_t frameBuffers;
+
+void FB_InitFrameBuffers() {
+	FB_ShutdownFrameBuffers();
+
+	FrameBuffer *backBuffer = FrameBuffer::BackBuffer();
+	frameBuffers.finalOutput = backBuffer;
+
+	if( r_useFbo.GetBool() ) {
+		
+	} else {
+		frameBuffers.primary = backBuffer;
+		frameBuffers.resolve = backBuffer;
+		frameBuffers.lightgem = backBuffer;
+	}
+}
+
+void FB_ShutdownFrameBuffers() {
+	for( auto it : frameBuffers.allFrameBuffers ) {
+		delete it;
+	}
+	frameBuffers.allFrameBuffers.clear();
+
+	frameBuffers.primary = nullptr;
+	frameBuffers.resolve = nullptr;
+	frameBuffers.lightgem = nullptr;
+	frameBuffers.backBuffer = nullptr;
+	frameBuffers.finalOutput = nullptr;
+	frameBuffers.currentDraw = nullptr;
+	frameBuffers.currentRead = nullptr;
+}
+
+FrameBuffer::FrameBuffer( GLuint fbo, GLuint width, GLuint height, int msaa )
+	: fbo( fbo ), colorBuffer( 0 ), depthStencilBuffer( 0 ), width( width ), height( height ), msaa( msaa ) {
+}
+
+
+FrameBuffer::~FrameBuffer() {
+	if( fbo != 0 ) {
+		qglDeleteFramebuffers( 1, &fbo );
+	}
+	if( colorBuffer != 0 ) {
+		qglDeleteRenderbuffers( 1, &colorBuffer );
+	}
+	if( depthStencilBuffer != 0 ) {
+		qglDeleteRenderbuffers( 1, &depthStencilBuffer );
+	}
+}
+
+FrameBuffer * FrameBuffer::Create( GLuint width, GLuint height, int msaa ) {
+	GLuint fbo = 0;
+	qglGenFramebuffers( 1, &fbo );
+	if( fbo == 0 ) {
+		common->FatalError( "Failed to allocate framebuffer object" );
+	}
+
+	FrameBuffer *frameBuffer = new FrameBuffer( fbo, width, height, msaa );
+	frameBuffers.allFrameBuffers.push_back( frameBuffer );
+	common->Printf( "FBO created: %dx%d, AA = %d\n", width, height, msaa );
+	return frameBuffer;
+}
+
+FrameBuffer * FrameBuffer::BackBuffer() {
+	if( frameBuffers.backBuffer == 0 ) {
+		frameBuffers.backBuffer = new FrameBuffer( 0, glConfig.vidWidth, glConfig.vidHeight, 0 );
+		frameBuffers.allFrameBuffers.push_back( frameBuffers.backBuffer );
+		common->Printf( "Backbuffer dimensions: %dx%d\n", frameBuffers.backBuffer->width, frameBuffers.backBuffer->height );
+	}
+	return frameBuffers.backBuffer;
+}
+
+void FrameBuffer::CreateColorBuffer() {
+	if( colorBuffer == 0 ) {
+		qglGenRenderbuffers( 1, &colorBuffer );
+		if( colorBuffer == 0 ) {
+			common->FatalError( "Failed to allocate color render buffer" );
+		}
+	}
+	qglBindRenderbuffer( GL_RENDERBUFFER, colorBuffer );
+	if( msaa > 1 ) {
+		qglRenderbufferStorageMultisample( GL_RENDERBUFFER, msaa, GL_RGBA, width, height );
+	} else {
+		qglRenderbufferStorage( GL_RENDERBUFFER, GL_RGBA, width, height );
+	}
+
+	Bind();
+	qglFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, colorBuffer );
+}
+
+void FrameBuffer::CreateDepthStencilBuffer() {
+	if( depthStencilBuffer == 0 ) {
+		qglGenRenderbuffers( 1, &depthStencilBuffer );
+		if( depthStencilBuffer == 0 ) {
+			common->FatalError( "Failed to allocate depth/stencil render buffer" );
+		}
+	}
+	qglBindRenderbuffer( GL_RENDERBUFFER, depthStencilBuffer );
+	if( msaa > 1 ) {
+		qglRenderbufferStorageMultisample( GL_RENDERBUFFER, msaa, GL_DEPTH24_STENCIL8, width, height );
+	} else {
+		qglRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height );
+	}
+
+	Bind();
+	qglFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthStencilBuffer );
+}
+
+void FrameBuffer::AddColorTexture( idImage *colorTexture ) {
+	if( msaa > 1 ) {
+		common->FatalError( "Rendering to texture for a framebuffer with AA enabled is not currently supported." );
+	}
+	if( colorBuffer != 0 ) {
+		common->Warning( "Setting framebuffer color attachment to texture, but a color render buffer was previously created." );
+	}
+	Bind();
+	qglFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTexture->texnum, 0 );
+}
+
+void FrameBuffer::AddDepthStencilTexture( idImage *depthStencilTexture ) {
+	if( msaa > 1 ) {
+		common->FatalError( "Rendering to texture for a framebuffer with AA enabled is not currently supported." );
+	}
+	if( depthStencilBuffer != 0 ) {
+		common->Warning( "Setting framebuffer depth/stencil attachment to texture, but a render buffer was previously created." );
+	}
+	Bind();
+	qglFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depthStencilTexture->texnum, 0 );
+}
+
+void FrameBuffer::AddDepthStencilTextures( idImage *depthTexture, idImage *stencilTexture ) {
+	if( msaa > 1 ) {
+		common->FatalError( "Rendering to texture for a framebuffer with AA enabled is not currently supported." );
+	}
+	if( depthStencilBuffer != 0 ) {
+		common->Warning( "Setting framebuffer depth/stencil attachment to texture, but a render buffer was previously created." );
+	}
+	Bind();
+	qglFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTexture->texnum, 0 );
+	qglFramebufferTexture2D( GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, stencilTexture->texnum, 0 );
+}
+
+void FrameBuffer::Validate() {
+	if( fbo == 0 ) {
+		return;
+	}
+
+	Bind();
+	int status = qglCheckFramebufferStatus( GL_FRAMEBUFFER );
+	switch( status )
+	{
+	case GL_FRAMEBUFFER_COMPLETE:
+		break;
+
+	case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+		common->FatalError( "FrameBuffer::Validate(): Framebuffer incomplete, incomplete attachment" );
+		break;
+
+	case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+		common->FatalError( "FrameBuffer::Validate(): Framebuffer incomplete, missing attachment" );
+		break;
+
+	case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+		common->FatalError( "FrameBuffer::Validate(): Framebuffer incomplete, missing draw buffer" );
+		break;
+
+	case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+		common->FatalError( "FrameBuffer::Validate(): Framebuffer incomplete, missing read buffer" );
+		break;
+
+	case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
+		common->FatalError( "FrameBuffer::Validate(): Framebuffer incomplete, missing layer targets" );
+		break;
+
+	case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+		common->FatalError( "FrameBuffer::Validate(): Framebuffer incomplete, missing multisample" );
+		break;
+
+	case GL_FRAMEBUFFER_UNSUPPORTED:
+		common->FatalError( "FrameBuffer::Validate(): Unsupported framebuffer format" );
+		break;
+
+	default:
+		common->FatalError( "FrameBuffer::Validate(): Unknown error 0x%X", status );
+		break;
+	};
+}
+
+void FrameBuffer::Bind() {
+	if( frameBuffers.currentDraw != this || frameBuffers.currentRead != this ) {
+		qglBindFramebuffer( GL_FRAMEBUFFER, fbo );
+		frameBuffers.currentDraw = this;
+		frameBuffers.currentRead = this;
+	}
+}
+
+void FrameBuffer::BindDraw() {
+	if( frameBuffers.currentDraw != this ) {
+		qglBindFramebuffer( GL_DRAW_FRAMEBUFFER, fbo );
+		frameBuffers.currentDraw = this;
+	}
+}
+
+void FrameBuffer::BindRead() {
+	if( frameBuffers.currentRead != this ) {
+		qglBindFramebuffer( GL_READ_FRAMEBUFFER, fbo );
+		frameBuffers.currentRead = this;
+	}
+}
+
+void FrameBuffer::BlitFullTo( FrameBuffer *target, GLbitfield mask, GLenum filter ) {
+	BindRead();
+	target->BindDraw();
+
+	qglDisable( GL_SCISSOR_TEST );
+	qglBlitFramebuffer( 0, 0, width, height, 0, 0, target->width, target->height, mask, filter );
+	qglEnable( GL_SCISSOR_TEST );
+}
