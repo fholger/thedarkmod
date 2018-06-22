@@ -86,7 +86,10 @@ private:
 	GLuint fbo;
 	GLenum colorBufferType;
 	GLuint colorBuffer;
+	idImage *colorTexture;
 	GLuint depthStencilBuffer;
+	idImage *depthTexture;
+	idImage *stencilTexture;
 
 	GLuint width;
 	GLuint height;

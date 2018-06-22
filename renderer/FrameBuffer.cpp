@@ -542,7 +542,10 @@ FrameBuffer::FrameBuffer( GLuint fbo, GLuint width, GLuint height, int msaa )
 	: fbo( fbo ),
 	colorBufferType( GL_NONE ),
 	colorBuffer( 0 ),
+	colorTexture( nullptr ),
 	depthStencilBuffer( 0 ),
+	depthTexture( nullptr ),
+	stencilTexture( nullptr ),
 	width( width ),
 	height( height ),
 	msaa( msaa ) {
@@ -600,6 +603,8 @@ FrameBuffer * FrameBuffer::FrontBuffer() {
 }
 
 void FrameBuffer::CreateColorBuffer() {
+	assert( colorTexture == nullptr && "Either create a color buffer or add a texture, not both" );
+
 	if( colorBuffer == 0 ) {
 		qglGenRenderbuffers( 1, &colorBuffer );
 		if( colorBuffer == 0 ) {
@@ -620,6 +625,9 @@ void FrameBuffer::CreateColorBuffer() {
 }
 
 void FrameBuffer::CreateDepthStencilBuffer() {
+	assert( depthTexture == nullptr && "Either create a depth buffer or add a texture, not both" );
+	assert( stencilTexture == nullptr && "Either create a stencil buffer or add a texture, not both" );
+
 	if( depthStencilBuffer == 0 ) {
 		qglGenRenderbuffers( 1, &depthStencilBuffer );
 		if( depthStencilBuffer == 0 ) {
@@ -644,6 +652,7 @@ void FrameBuffer::AddColorTexture( idImage *colorTexture ) {
 	Bind();
 	qglFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTexture->texnum, 0 );
 
+	this->colorTexture = colorTexture;
 	colorBufferType = GL_COLOR_ATTACHMENT0;
 }
 
@@ -653,6 +662,9 @@ void FrameBuffer::AddDepthStencilTexture( idImage *depthStencilTexture ) {
 
 	Bind();
 	qglFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depthStencilTexture->texnum, 0 );
+
+	this->depthTexture = depthStencilTexture;
+	this->stencilTexture = depthStencilTexture;
 }
 
 void FrameBuffer::AddDepthStencilTextures( idImage *depthTexture, idImage *stencilTexture ) {
@@ -662,6 +674,9 @@ void FrameBuffer::AddDepthStencilTextures( idImage *depthTexture, idImage *stenc
 	Bind();
 	qglFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTexture->texnum, 0 );
 	qglFramebufferTexture2D( GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, stencilTexture->texnum, 0 );
+
+	this->depthTexture = depthTexture;
+	this->stencilTexture = stencilTexture;
 }
 
 void FrameBuffer::Validate() {
