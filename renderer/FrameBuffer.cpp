@@ -511,6 +511,7 @@ void FB_InitFrameBuffers() {
 	FB_ShutdownFrameBuffers();
 
 	FrameBuffer *backBuffer = FrameBuffer::BackBuffer();
+	FrameBuffer *frontBuffer = FrameBuffer::FrontBuffer();
 	frameBuffers.finalOutput = backBuffer;
 
 	if( r_useFbo.GetBool() ) {
@@ -523,10 +524,10 @@ void FB_InitFrameBuffers() {
 }
 
 void FB_ShutdownFrameBuffers() {
-	for( auto it : frameBuffers.allFrameBuffers ) {
-		delete it;
+	for( size_t i = 0; i < frameBuffers.allFrameBuffers.Size(); ++i) {
+		delete frameBuffers.allFrameBuffers[i];
 	}
-	frameBuffers.allFrameBuffers.clear();
+	frameBuffers.allFrameBuffers.Clear();
 
 	frameBuffers.primary = nullptr;
 	frameBuffers.resolve = nullptr;
@@ -538,7 +539,13 @@ void FB_ShutdownFrameBuffers() {
 }
 
 FrameBuffer::FrameBuffer( GLuint fbo, GLuint width, GLuint height, int msaa )
-	: fbo( fbo ), colorBuffer( 0 ), depthStencilBuffer( 0 ), width( width ), height( height ), msaa( msaa ) {
+	: fbo( fbo ),
+	colorBufferType( GL_NONE ),
+	colorBuffer( 0 ),
+	depthStencilBuffer( 0 ),
+	width( width ),
+	height( height ),
+	msaa( msaa ) {
 }
 
 
@@ -561,8 +568,13 @@ FrameBuffer * FrameBuffer::Create( GLuint width, GLuint height, int msaa ) {
 		common->FatalError( "Failed to allocate framebuffer object" );
 	}
 
+	if( msaa > 1 && !glConfig.framebufferMultisampleAvailable ) {
+		common->Printf( "Trying to create an anti-aliased FBO, but multisampling support not available.\n" );
+		msaa = 0;
+	}
+
 	FrameBuffer *frameBuffer = new FrameBuffer( fbo, width, height, msaa );
-	frameBuffers.allFrameBuffers.push_back( frameBuffer );
+	frameBuffers.allFrameBuffers.Append( frameBuffer );
 	common->Printf( "FBO created: %dx%d, AA = %d\n", width, height, msaa );
 	return frameBuffer;
 }
@@ -570,8 +582,19 @@ FrameBuffer * FrameBuffer::Create( GLuint width, GLuint height, int msaa ) {
 FrameBuffer * FrameBuffer::BackBuffer() {
 	if( frameBuffers.backBuffer == 0 ) {
 		frameBuffers.backBuffer = new FrameBuffer( 0, glConfig.vidWidth, glConfig.vidHeight, 0 );
-		frameBuffers.allFrameBuffers.push_back( frameBuffers.backBuffer );
+		frameBuffers.backBuffer->colorBufferType = GL_BACK;
+		frameBuffers.allFrameBuffers.Append( frameBuffers.backBuffer );
 		common->Printf( "Backbuffer dimensions: %dx%d\n", frameBuffers.backBuffer->width, frameBuffers.backBuffer->height );
+	}
+	return frameBuffers.backBuffer;
+}
+
+FrameBuffer * FrameBuffer::FrontBuffer() {
+	if( frameBuffers.frontBuffer == 0 ) {
+		frameBuffers.frontBuffer = new FrameBuffer( 0, glConfig.vidWidth, glConfig.vidHeight, 0 );
+		frameBuffers.frontBuffer->colorBufferType = GL_FRONT;
+		frameBuffers.allFrameBuffers.Append( frameBuffers.frontBuffer );
+		common->Printf( "Frontbuffer dimensions: %dx%d\n", frameBuffers.frontBuffer->width, frameBuffers.frontBuffer->height );
 	}
 	return frameBuffers.backBuffer;
 }
@@ -592,6 +615,8 @@ void FrameBuffer::CreateColorBuffer() {
 
 	Bind();
 	qglFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, colorBuffer );
+
+	colorBufferType = GL_COLOR_ATTACHMENT0;
 }
 
 void FrameBuffer::CreateDepthStencilBuffer() {
@@ -613,34 +638,27 @@ void FrameBuffer::CreateDepthStencilBuffer() {
 }
 
 void FrameBuffer::AddColorTexture( idImage *colorTexture ) {
-	if( msaa > 1 ) {
-		common->FatalError( "Rendering to texture for a framebuffer with AA enabled is not currently supported." );
-	}
-	if( colorBuffer != 0 ) {
-		common->Warning( "Setting framebuffer color attachment to texture, but a color render buffer was previously created." );
-	}
+	assert( msaa <= 1 && "Support for AA textures not currently implemented" );
+	assert( colorBuffer == 0 && "Either create a color buffer or add a texture, not both" );
+
 	Bind();
 	qglFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTexture->texnum, 0 );
+
+	colorBufferType = GL_COLOR_ATTACHMENT0;
 }
 
 void FrameBuffer::AddDepthStencilTexture( idImage *depthStencilTexture ) {
-	if( msaa > 1 ) {
-		common->FatalError( "Rendering to texture for a framebuffer with AA enabled is not currently supported." );
-	}
-	if( depthStencilBuffer != 0 ) {
-		common->Warning( "Setting framebuffer depth/stencil attachment to texture, but a render buffer was previously created." );
-	}
+	assert( msaa <= 1 && "Support for AA textures not currently implemented" );
+	assert( colorBuffer == 0 && "Either create a depth buffer or add a texture, not both" );
+
 	Bind();
 	qglFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depthStencilTexture->texnum, 0 );
 }
 
 void FrameBuffer::AddDepthStencilTextures( idImage *depthTexture, idImage *stencilTexture ) {
-	if( msaa > 1 ) {
-		common->FatalError( "Rendering to texture for a framebuffer with AA enabled is not currently supported." );
-	}
-	if( depthStencilBuffer != 0 ) {
-		common->Warning( "Setting framebuffer depth/stencil attachment to texture, but a render buffer was previously created." );
-	}
+	assert( msaa <= 1 && "Support for AA textures not currently implemented" );
+	assert( colorBuffer == 0 && "Either create a depth buffer or add a texture, not both" );
+
 	Bind();
 	qglFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTexture->texnum, 0 );
 	qglFramebufferTexture2D( GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, stencilTexture->texnum, 0 );
@@ -712,6 +730,14 @@ void FrameBuffer::BindRead() {
 		qglBindFramebuffer( GL_READ_FRAMEBUFFER, fbo );
 		frameBuffers.currentRead = this;
 	}
+}
+
+void FrameBuffer::SetReadBuffer() {
+	qglReadBuffer( colorBufferType );
+}
+
+void FrameBuffer::SetDrawBuffer() {
+	qglDrawBuffer( colorBufferType );
 }
 
 void FrameBuffer::BlitFullTo( FrameBuffer *target, GLbitfield mask, GLenum filter ) {

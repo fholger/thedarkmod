@@ -56,6 +56,7 @@ public:
 
 	static FrameBuffer * Create( GLuint width, GLuint height, int msaa = 0 );
 	static FrameBuffer * BackBuffer();
+	static FrameBuffer * FrontBuffer();
 
 	void CreateColorBuffer();
 	void CreateDepthStencilBuffer();
@@ -70,6 +71,9 @@ public:
 	void BindDraw();
 	void BindRead();
 
+	void SetReadBuffer();
+	void SetDrawBuffer();
+
 	void BlitFullTo( FrameBuffer *target, GLbitfield mask = GL_COLOR_BUFFER_BIT, GLenum filter = GL_NEAREST );
 
 	GLuint GetWidth() const { return width; }
@@ -80,6 +84,7 @@ private:
 	FrameBuffer( GLuint fbo, GLuint width, GLuint height, int msaa );
 
 	GLuint fbo;
+	GLenum colorBufferType;
 	GLuint colorBuffer;
 	GLuint depthStencilBuffer;
 
@@ -93,12 +98,13 @@ struct frameBuffers_t {
 	FrameBuffer *resolve;
 	FrameBuffer *lightgem;
 	FrameBuffer *backBuffer;
+	FrameBuffer *frontBuffer;
 	FrameBuffer *finalOutput;
 
 	FrameBuffer *currentDraw;
 	FrameBuffer *currentRead;
 
-	std::vector<FrameBuffer*> allFrameBuffers;
+	idList<FrameBuffer*> allFrameBuffers;
 };
 extern frameBuffers_t frameBuffers;
 
