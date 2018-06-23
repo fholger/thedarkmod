@@ -67,6 +67,8 @@ public:
 
 	void SetResolveColorFbo( FrameBuffer *resolveColorFbo );
 	void SetResolveDepthFbo( FrameBuffer *resolveDepthFbo );
+	FrameBuffer * GetResolveColorFbo() const { return resolveColorFbo; }
+	FrameBuffer * GetResolveDepthFbo() const { return resolveDepthFbo; }
 
 	void Validate();
 

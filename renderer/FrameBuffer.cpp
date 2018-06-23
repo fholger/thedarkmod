@@ -79,6 +79,10 @@ When using AA, we can't just qglCopyTexImage2D from MSFB to a regular texture.
 This function blits to fboResolve, then we have a copy of MSFB in the currentRender texture
 */
 void FB_ResolveMultisampling( GLbitfield mask, GLenum filter) {
+	// TODO
+	frameBuffers.primary->BlitFullTo( frameBuffers.resolve, mask, filter );
+	return;
+
 	qglDisable( GL_SCISSOR_TEST );
 	qglBindFramebuffer( GL_DRAW_FRAMEBUFFER, fboResolve );
 	qglBlitFramebuffer( 0, 0, globalImages->currentRenderImage->uploadWidth, globalImages->currentRenderImage->uploadHeight,
@@ -289,13 +293,15 @@ void CheckCreateShadow() {
 
 void FB_SelectPrimary() {
 	if( primaryOn )
-		qglBindFramebuffer( GL_FRAMEBUFFER, fboPrimary );
+		frameBuffers.renderTarget->Bind();
 }
 
 void FB_SelectPostProcess() {
 	if( !primaryOn )
 		return;
 
+	// TODO
+	return;
 	GLuint curWidth = glConfig.vidWidth * r_fboResolution.GetFloat();
 	GLuint curHeight = glConfig.vidHeight * r_fboResolution.GetFloat();
 	if( !fboPostProcess || curWidth != postProcessWidth || curHeight != postProcessHeight ) {
@@ -342,6 +348,9 @@ void FB_ApplyScissor() {
 void FB_ToggleShadow( bool on, bool clear ) {
 	//if ( r_shadows.GetInteger() < 2 ) // "Click when ready" screen calls this when not in FBO
 		//return;
+	// TODO
+	frameBuffers.renderTarget->Bind();
+	return;
 	CheckCreateShadow();
 	if ( on &&  r_shadows.GetInteger() == 1 ) { 
 		if( primaryOn && r_multiSamples.GetInteger() > 1 ) {
@@ -427,8 +436,7 @@ void EnterPrimary() {
 		return;
 	if ( primaryOn )
 		return;
-	CheckCreatePrimary();
-	qglBindFramebuffer( GL_FRAMEBUFFER, fboPrimary );
+	frameBuffers.renderTarget->Bind();
 	qglViewport( tr.viewportOffset[0] + backEnd.viewDef->viewport.x1,	// FIXME: must not use tr in backend
 		tr.viewportOffset[1] + backEnd.viewDef->viewport.y1,
 		backEnd.viewDef->viewport.x2 + 1 - backEnd.viewDef->viewport.x1,
@@ -450,13 +458,12 @@ void LeavePrimary() {
 
 	qglViewport( 0, 0, glConfig.vidWidth, glConfig.vidHeight );
 	qglScissor( 0, 0, glConfig.vidWidth, glConfig.vidHeight );
-	if( r_multiSamples.GetInteger() > 1 ) {
-		FB_ResolveMultisampling( GL_COLOR_BUFFER_BIT );
-		qglBindFramebuffer( GL_READ_FRAMEBUFFER, fboResolve );
+	FrameBuffer * blitSource = frameBuffers.renderTarget;
+	if( blitSource->GetMSAA() > 1 ) {
+		blitSource->BlitFullTo( blitSource->GetResolveColorFbo() );
+		blitSource = blitSource->GetResolveColorFbo();
 	}
-	qglBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	qglBlitFramebuffer( 0, 0, globalImages->currentRenderImage->uploadWidth, globalImages->currentRenderImage->uploadHeight,
-		0, 0, glConfig.vidWidth, glConfig.vidHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR );
+	blitSource->BlitFullTo( frameBuffers.backBuffer );
 
 	if( r_fboDebug.GetInteger() != 0 ) {
 		if( r_multiSamples.GetInteger() > 1 ) {
@@ -491,7 +498,7 @@ void LeavePrimary() {
 		qglMatrixMode( GL_MODELVIEW );
 		GL_SelectTexture( 0 );
 	}
-	qglBindFramebuffer( GL_FRAMEBUFFER, 0 );
+	frameBuffers.backBuffer->Bind();
 	primaryOn = false;
 	if ( r_frontBuffer.GetBool() )
 		qglFinish();
@@ -543,12 +550,16 @@ void CreatePrimaryResolveFrameBuffers( int width, int height, int msaa ) {
 	} else {
 		depthTexturesFbo->AddDepthStencilTexture( globalImages->currentDepthImage );
 	}
+
+	frameBuffers.primary->Validate();
+	frameBuffers.resolve->Validate();
 }
 
 void CreateLightgemFrameBuffer() {
 	frameBuffers.lightgem = FrameBuffer::Create( DARKMOD_LG_RENDER_WIDTH, DARKMOD_LG_RENDER_WIDTH, 0 );
 	frameBuffers.lightgem->CreateColorBuffer();
 	frameBuffers.lightgem->CreateDepthStencilBuffer();
+	frameBuffers.lightgem->Validate();
 }
 
 void FB_InitFrameBuffers() {
@@ -572,10 +583,12 @@ void FB_InitFrameBuffers() {
 		frameBuffers.lightgem = backBuffer;
 		frameBuffers.renderTarget = backBuffer;
 	}
+
+	frameBuffers.backBuffer->Bind();
 }
 
 void FB_ShutdownFrameBuffers() {
-	for( size_t i = 0; i < frameBuffers.allFrameBuffers.Size(); ++i) {
+	for( size_t i = 0; i < frameBuffers.allFrameBuffers.Num(); ++i) {
 		delete frameBuffers.allFrameBuffers[i];
 	}
 	frameBuffers.allFrameBuffers.Clear();

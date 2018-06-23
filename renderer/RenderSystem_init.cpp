@@ -2049,6 +2049,7 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 		// free all of our texture numbers
 		soundSystem->ShutdownHW();
 		Sys_ShutdownInput();
+		FB_ShutdownFrameBuffers();
 		globalImages->PurgeAllImages();
 		// free the context and close the window
 		session->TerminateFrontendThread();
@@ -2066,6 +2067,7 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 
 		// regenerate all images
 		globalImages->ReloadAllImages();
+		FB_InitFrameBuffers();
 		session->StartFrontendThread();
 	} else {
 		glimpParms_t	parms;
@@ -2319,6 +2321,7 @@ void idRenderSystemLocal::Shutdown( void ) {
 	R_DoneFreeType( );
 
 	if ( glConfig.isInitialized ) {
+		FB_ShutdownFrameBuffers();
 		globalImages->PurgeAllImages();
 	}
 
@@ -2390,6 +2393,7 @@ void idRenderSystemLocal::InitOpenGL( void ) {
 		R_InitOpenGL();
 
 		globalImages->ReloadAllImages();
+		FB_InitFrameBuffers();
 
 		err = qglGetError();
 		if ( err != GL_NO_ERROR ) {
