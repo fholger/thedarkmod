@@ -65,20 +65,30 @@ public:
 	void AddDepthStencilTexture( idImage *depthStencilTexture );
 	void AddDepthStencilTextures( idImage *depthTexture, idImage *stencilTexture );
 
+	void SetResolveColorFbo( FrameBuffer *resolveColorFbo );
+	void SetResolveDepthFbo( FrameBuffer *resolveDepthFbo );
+
 	void Validate();
 
 	void Bind();
 	void BindDraw();
 	void BindRead();
 
-	void SetReadBuffer();
-	void SetDrawBuffer();
-
 	void BlitFullTo( FrameBuffer *target, GLbitfield mask = GL_COLOR_BUFFER_BIT, GLenum filter = GL_NEAREST );
 
-	GLuint GetWidth() const { return width; }
+	/* Makes a copy of the current fbo color contents to the given texture.
+	 * If target texture is bound to this fbo, the copy is skipped.
+	 * If target texture is bound to the resolveColor fbo, will use a blit to the resolveColor fbo.
+	 * Otherwise, a copy to the texture is made.
+	 */
+	void CopyColor( idImage *target );
 
+	/* Make a copy of the current fbo depth contents to the given texture. Same procedure as for color above. */
+	void CopyDepth( idImage *target );
+
+	GLuint GetWidth() const { return width; }
 	GLuint GetHeight() const { return height; }
+	int GetMSAA() const { return msaa; }
 
 private:
 	FrameBuffer( GLuint fbo, GLuint width, GLuint height, int msaa );
@@ -91,19 +101,27 @@ private:
 	idImage *depthTexture;
 	idImage *stencilTexture;
 
+	FrameBuffer *resolveColorFbo;
+	FrameBuffer *resolveDepthFbo;
+
 	GLuint width;
 	GLuint height;
 	int msaa;
 };
 
 struct frameBuffers_t {
+	// These are the available framebuffers. Do NOT use them directly in rendering code!
 	FrameBuffer *primary;
 	FrameBuffer *resolve;
 	FrameBuffer *lightgem;
 	FrameBuffer *backBuffer;
 	FrameBuffer *frontBuffer;
+
+	// These are the current routing targets for rendering.
+	FrameBuffer *renderTarget;
 	FrameBuffer *finalOutput;
 
+	// Currently bound framebuffers cache
 	FrameBuffer *currentDraw;
 	FrameBuffer *currentRead;
 

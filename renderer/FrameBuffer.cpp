@@ -507,6 +507,50 @@ void FB_TogglePrimary( bool on ) {
 
 frameBuffers_t frameBuffers;
 
+void CreateFrameBufferTextures(int width, int height) {
+	globalImages->currentRenderImage->GenerateAttachment( width, height, TF_LINEAR, GL_RGBA );
+
+	if( glConfig.vendor == glvIntel ) {
+		// can use separate depth and stencil textures
+		globalImages->currentDepthImage->GenerateAttachment( width, height, TF_NEAREST, GL_DEPTH_COMPONENT );
+		globalImages->currentStencilFbo->GenerateAttachment( width, height, TF_NEAREST, GL_STENCIL_INDEX );
+	} else {
+		globalImages->currentDepthImage->GenerateAttachment( width, height, TF_NEAREST, GL_DEPTH_STENCIL );
+	}
+}
+
+void CreatePrimaryResolveFrameBuffers( int width, int height, int msaa ) {
+	// always render color into a buffer and blit to the resolve fbo's texture when a copy is needed
+	// avoids feedback loops
+	frameBuffers.primary = FrameBuffer::Create( width, height, msaa );
+	frameBuffers.resolve = FrameBuffer::Create( width, height, 0 );
+	frameBuffers.primary->CreateColorBuffer();
+	frameBuffers.resolve->AddColorTexture( globalImages->currentRenderImage );
+	frameBuffers.primary->SetResolveColorFbo( frameBuffers.resolve );
+
+	FrameBuffer *depthTexturesFbo;
+	if( msaa > 1 ) {
+		// we also need to resolve depth AA via the resolve fbo
+		frameBuffers.primary->CreateDepthStencilBuffer();
+		depthTexturesFbo = frameBuffers.resolve;
+		frameBuffers.primary->SetResolveDepthFbo( frameBuffers.resolve );
+	} else {
+		// we can directly render to the depth texture and use it in post-process shaders
+		depthTexturesFbo = frameBuffers.primary;
+	}
+	if( glConfig.vendor == glvIntel ) {
+		depthTexturesFbo->AddDepthStencilTextures( globalImages->currentDepthImage, globalImages->currentStencilFbo );
+	} else {
+		depthTexturesFbo->AddDepthStencilTexture( globalImages->currentDepthImage );
+	}
+}
+
+void CreateLightgemFrameBuffer() {
+	frameBuffers.lightgem = FrameBuffer::Create( DARKMOD_LG_RENDER_WIDTH, DARKMOD_LG_RENDER_WIDTH, 0 );
+	frameBuffers.lightgem->CreateColorBuffer();
+	frameBuffers.lightgem->CreateDepthStencilBuffer();
+}
+
 void FB_InitFrameBuffers() {
 	FB_ShutdownFrameBuffers();
 
@@ -515,11 +559,18 @@ void FB_InitFrameBuffers() {
 	frameBuffers.finalOutput = backBuffer;
 
 	if( r_useFbo.GetBool() ) {
-		
+		int curWidth = r_fboResolution.GetFloat() * glConfig.vidWidth;
+		int curHeight = r_fboResolution.GetFloat() * glConfig.vidHeight;
+		int msaa = r_multiSamples.GetInteger();
+		CreateFrameBufferTextures( curWidth, curHeight );
+		CreatePrimaryResolveFrameBuffers( curWidth, curHeight, msaa );
+		CreateLightgemFrameBuffer();
+		frameBuffers.renderTarget = frameBuffers.primary;
 	} else {
 		frameBuffers.primary = backBuffer;
 		frameBuffers.resolve = backBuffer;
 		frameBuffers.lightgem = backBuffer;
+		frameBuffers.renderTarget = backBuffer;
 	}
 }
 
@@ -546,6 +597,8 @@ FrameBuffer::FrameBuffer( GLuint fbo, GLuint width, GLuint height, int msaa )
 	depthStencilBuffer( 0 ),
 	depthTexture( nullptr ),
 	stencilTexture( nullptr ),
+	resolveColorFbo( nullptr ),
+	resolveDepthFbo( nullptr ),
 	width( width ),
 	height( height ),
 	msaa( msaa ) {
@@ -679,6 +732,14 @@ void FrameBuffer::AddDepthStencilTextures( idImage *depthTexture, idImage *stenc
 	this->stencilTexture = stencilTexture;
 }
 
+void FrameBuffer::SetResolveColorFbo( FrameBuffer *resolveColorFbo ) {
+	this->resolveColorFbo = resolveColorFbo;
+}
+
+void FrameBuffer::SetResolveDepthFbo( FrameBuffer *resolveDepthFbo ) {
+	this->resolveDepthFbo = resolveDepthFbo;
+}
+
 void FrameBuffer::Validate() {
 	if( fbo == 0 ) {
 		return;
@@ -727,7 +788,10 @@ void FrameBuffer::Validate() {
 
 void FrameBuffer::Bind() {
 	if( frameBuffers.currentDraw != this || frameBuffers.currentRead != this ) {
-		qglBindFramebuffer( GL_FRAMEBUFFER, fbo );
+		if( glConfig.framebufferObjectAvailable )
+			qglBindFramebuffer( GL_FRAMEBUFFER, fbo );
+		qglReadBuffer( colorBufferType );
+		qglDrawBuffer( colorBufferType );
 		frameBuffers.currentDraw = this;
 		frameBuffers.currentRead = this;
 	}
@@ -735,31 +799,61 @@ void FrameBuffer::Bind() {
 
 void FrameBuffer::BindDraw() {
 	if( frameBuffers.currentDraw != this ) {
-		qglBindFramebuffer( GL_DRAW_FRAMEBUFFER, fbo );
+		if( glConfig.framebufferObjectAvailable )
+			qglBindFramebuffer( GL_DRAW_FRAMEBUFFER, fbo );
+		qglDrawBuffer( colorBufferType );
 		frameBuffers.currentDraw = this;
 	}
 }
 
 void FrameBuffer::BindRead() {
 	if( frameBuffers.currentRead != this ) {
-		qglBindFramebuffer( GL_READ_FRAMEBUFFER, fbo );
+		if( glConfig.framebufferObjectAvailable )
+			qglBindFramebuffer( GL_READ_FRAMEBUFFER, fbo );
+		qglReadBuffer( colorBufferType );
 		frameBuffers.currentRead = this;
 	}
 }
 
-void FrameBuffer::SetReadBuffer() {
-	qglReadBuffer( colorBufferType );
-}
-
-void FrameBuffer::SetDrawBuffer() {
-	qglDrawBuffer( colorBufferType );
-}
-
 void FrameBuffer::BlitFullTo( FrameBuffer *target, GLbitfield mask, GLenum filter ) {
+	FrameBuffer *prevRead = frameBuffers.currentRead;
+	FrameBuffer *prevDraw = frameBuffers.currentDraw;
+
 	BindRead();
 	target->BindDraw();
 
 	qglDisable( GL_SCISSOR_TEST );
 	qglBlitFramebuffer( 0, 0, width, height, 0, 0, target->width, target->height, mask, filter );
 	qglEnable( GL_SCISSOR_TEST );
+
+	prevRead->BindRead();
+	prevDraw->BindDraw();
+}
+
+void FrameBuffer::CopyColor( idImage *target ) {
+	if( target == colorTexture ) {
+		return;
+	}
+	if( resolveColorFbo != nullptr && resolveColorFbo->colorTexture == target ) {
+		BlitFullTo( resolveColorFbo, GL_COLOR_BUFFER_BIT, GL_NEAREST );
+		return;
+	}
+	Bind();
+	target->CopyFramebuffer( backEnd.viewDef->viewport.x1,
+		backEnd.viewDef->viewport.y1, backEnd.viewDef->viewport.x2 - backEnd.viewDef->viewport.x1 + 1,
+		backEnd.viewDef->viewport.y2 - backEnd.viewDef->viewport.y1 + 1, true );
+}
+
+void FrameBuffer::CopyDepth( idImage *target ) {
+	if( target == depthTexture ) {
+		return;
+	}
+	if( resolveDepthFbo != nullptr && resolveDepthFbo->depthTexture == target ) {
+		BlitFullTo( resolveDepthFbo, GL_DEPTH_BUFFER_BIT, GL_NEAREST );
+		return;
+	}
+	Bind();
+	target->CopyDepthBuffer( backEnd.viewDef->viewport.x1,
+		backEnd.viewDef->viewport.y1, backEnd.viewDef->viewport.x2 - backEnd.viewDef->viewport.x1 + 1,
+		backEnd.viewDef->viewport.y2 - backEnd.viewDef->viewport.y1 + 1, true );
 }

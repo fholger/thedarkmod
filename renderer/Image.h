@@ -167,6 +167,7 @@ public:
 						textureFilter_t filter, bool allowDownSize, 
 						textureDepth_t depth );
 	void		GenerateAttachment( int width, int height, GLint format );
+	void		GenerateAttachment( int width, int height, textureFilter_t filter, GLint format );
 /*	void		GenerateRendertarget(); //~SS
 	// added for soft shadows jitter map, but should be generally useful for storing data 
 	// in a 3D texture. No mipmaps, high quality, nearest filtering, user specifies the format.

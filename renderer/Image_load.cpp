@@ -701,6 +701,55 @@ void idImage::GenerateAttachment( int width, int height, GLint format ) {
 	internalFormat = format;
 }
 
+void idImage::GenerateAttachment( int width, int height, textureFilter_t filter, GLint format ) {
+	this->filter = filter;
+	Bind();
+	qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter == TF_NEAREST ? GL_NEAREST : GL_LINEAR );
+	qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter == TF_NEAREST ? GL_NEAREST : GL_LINEAR );
+	qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+	qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+	switch ( format ) {
+	case GL_DEPTH_STENCIL:
+		/*qglTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_STENCIL, width, height, 0, GL_DEPTH_STENCIL,
+			 ? GL_FLOAT_32_UNSIGNED_INT_24_8_REV : GL_UNSIGNED_INT_24_8, 0 );*/
+		if( r_fboDepthBits.GetInteger() == 32 )
+			qglTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH32F_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, 0 );
+		else
+			qglTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, 0 );
+		common->Printf( "Generated framebuffer DEPTH_STENCIL attachment: %dx%d\n", width, height );
+		break;
+	case GL_COLOR:
+		qglTexImage2D( GL_TEXTURE_2D, 0, r_fboColorBits.GetInteger() == 15 ? GL_RGB5_A1 : GL_RGBA, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, 0 );
+		common->Printf( "Generated framebuffer COLOR attachment: %dx%d\n", width, height );
+		break;
+	// these two are for Intel separate stencil optimization
+	case GL_DEPTH:
+		switch ( r_fboDepthBits.GetInteger() )
+		{
+		case 16:
+			qglTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0 );
+			break;
+		case 32:
+			qglTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0 );
+			break;
+		default:
+			qglTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0 );
+			break;
+		}
+		common->Printf( "Generated framebuffer DEPTH attachment: %dx%d\n", width, height );
+		break;
+	case GL_STENCIL:
+		qglTexImage2D( GL_TEXTURE_2D, 0, GL_STENCIL_INDEX8, width, height, 0, GL_STENCIL_INDEX, GL_UNSIGNED_BYTE, 0 );
+		common->Printf( "Generated framebuffer STENCIL attachment: %dx%d\n", width, height );
+		break;
+	default:
+		common->Error( "Unsupported format in GenerateAttachment\n" );
+	}
+	uploadWidth = width;
+	uploadHeight = height;
+	internalFormat = format;
+}
+
 /*
 ====================
 GenerateCubeImage
