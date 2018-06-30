@@ -746,10 +746,16 @@ void FrameBuffer::AddDepthStencilTextures( idImage *depthTexture, idImage *stenc
 }
 
 void FrameBuffer::SetResolveColorFbo( FrameBuffer *resolveColorFbo ) {
+	if( resolveColorFbo->GetWidth() != width || resolveColorFbo->GetHeight() != height ) {
+		common->FatalError( "Resolve Color FBO must have same dimensions as primary FBO" );
+	}
 	this->resolveColorFbo = resolveColorFbo;
 }
 
 void FrameBuffer::SetResolveDepthFbo( FrameBuffer *resolveDepthFbo ) {
+	if( resolveDepthFbo->GetWidth() != width || resolveDepthFbo->GetHeight() != height ) {
+		common->FatalError( "Resolve Depth FBO must have same dimensions as primary FBO" );
+	}
 	this->resolveDepthFbo = resolveDepthFbo;
 }
 
@@ -831,6 +837,10 @@ void FrameBuffer::BindRead() {
 void FrameBuffer::BlitFullTo( FrameBuffer *target, GLbitfield mask, GLenum filter ) {
 	FrameBuffer *prevRead = frameBuffers.currentRead;
 	FrameBuffer *prevDraw = frameBuffers.currentDraw;
+
+	if( msaa > 1 && ( width != target->GetWidth() || height != target->GetHeight() ) ) {
+		// TODO: need to resolve MSAA first
+	}
 
 	BindRead();
 	target->BindDraw();
