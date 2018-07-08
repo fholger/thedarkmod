@@ -170,12 +170,12 @@ Sys_WaitForEvent
 ==================
 */
 void Sys_WaitForEvent( int index ) {
-	assert( index == 0 );
-	if ( !win32.backgroundDownloadSemaphore ) {
-		win32.backgroundDownloadSemaphore = CreateEvent( NULL, TRUE, FALSE, NULL );
+	assert( index >= 0 && index < MAX_TRIGGER_EVENTS );
+	if ( !win32.events[index] ) {
+		win32.events[index] = CreateEvent( NULL, TRUE, FALSE, NULL );
 	}
-	WaitForSingleObject( win32.backgroundDownloadSemaphore, INFINITE );
-	ResetEvent( win32.backgroundDownloadSemaphore );
+	WaitForSingleObject( win32.events[index], INFINITE );
+	ResetEvent( win32.events[index] );
 }
 
 /*
@@ -184,8 +184,8 @@ Sys_TriggerEvent
 ==================
 */
 void Sys_TriggerEvent( int index ) {
-	assert( index == 0 );
-	SetEvent( win32.backgroundDownloadSemaphore );
+	assert( index >= 0 && index < MAX_TRIGGER_EVENTS );
+	SetEvent( win32.events[index] );
 }
 
 

@@ -92,7 +92,6 @@ THREAD_RETURN_TYPE Sys_AsyncThread(void*) {
 		while ( ticked < to_ticked ) {
 			common->Async();
 			ticked++;
-			Sys_TriggerEvent( TRIGGER_EVENT_ONE );
 		}
 		// thread exit
 		pthread_testcancel();
