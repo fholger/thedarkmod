@@ -1237,6 +1237,9 @@
     <ClInclude Include="renderer\Profiling.h">
       <Filter>Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\DynamicResolutionScaler.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -2918,6 +2921,9 @@
       <Filter>Sound</Filter>
     </ClCompile>
     <ClCompile Include="renderer\Profiling.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\DynamicResolutionScaler.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
   </ItemGroup>

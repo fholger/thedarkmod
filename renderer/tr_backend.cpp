@@ -17,6 +17,7 @@
 
 #include "tr_local.h"
 #include "FrameBuffer.h"
+#include "DynamicResolutionScaler.h"
 
 backEndState_t	backEnd;
 
@@ -557,6 +558,8 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 		return;
 	}
 
+	resolutionScaler.BeginRecordGpuTime();
+
 	// r_debugRenderToTexture
 	int	c_draw3d = 0, c_draw2d = 0, c_setBuffers = 0, c_swapBuffers = 0, c_copyRenders = 0;
 
@@ -608,6 +611,7 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 		case RC_SWAP_BUFFERS:
 			// duzenko #4425: display the fbo content 
 			FB_TogglePrimary( false );
+			resolutionScaler.EndRecordGpuTime();
 			RB_SwapBuffers(cmds);
 			c_swapBuffers++;
 			break;

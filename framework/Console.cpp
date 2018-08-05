@@ -15,6 +15,7 @@
 
 #include "precompiled.h"
 #include "../renderer/Profiling.h"
+#include "../renderer/DynamicResolutionScaler.h"
 #pragma hdrstop
 
 
@@ -212,6 +213,12 @@ int SCR_DrawFPS( int y ) {
     renderSystem->DrawBigStringExt(SCREEN_WIDTH - static_cast<int>(strlen(s)*BIGCHAR_WIDTH), y + 2, s, colorWhite, true, localConsole.charSetShader);
 
 	return (y + BIGCHAR_HEIGHT + 4);
+}
+
+int SCR_DrawResolutionScale( int y ) {
+	int curScalePercentage = 100 * resolutionScaler.GetCurrentResolutionScale();
+	SCR_DrawTextRightAlign( y, "%i%% scale", curScalePercentage );
+	return y;
 }
 
 /*
@@ -1192,6 +1199,7 @@ void idConsoleLocal::DrawSolidConsole( float frac ) {
 }
 
 
+
 /*
 ==============
 Draw
@@ -1235,6 +1243,10 @@ void idConsoleLocal::Draw( bool forceFullScreen ) {
 
 	if ( com_showFPS.GetBool() ) {
 		y = SCR_DrawFPS( 4 ); // Initial padding from the top of the screen.
+	}
+
+	if ( rs_showScale.GetBool() ) {
+		y = SCR_DrawResolutionScale( y );
 	}
 
 	if ( com_showMemoryUsage.GetBool() ) {
