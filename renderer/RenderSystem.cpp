@@ -19,6 +19,7 @@
 #include "FrameBuffer.h"
 #include "glsl.h"
 #include "Profiling.h"
+#include "DynamicResolutionScaler.h"
 
 idRenderSystemLocal	tr;
 idRenderSystem	*renderSystem = &tr;
@@ -557,6 +558,12 @@ void idRenderSystemLocal::BeginFrame( int windowWidth, int windowHeight ) {
 		renderCrops[0].width = windowWidth;
 		renderCrops[0].height = windowHeight;
 	}
+	if( rs_enable.GetBool() ) {
+		float dynamicScale = resolutionScaler.GetCurrentResolutionScale();
+		renderCrops[ 0 ].width *= dynamicScale;
+		renderCrops[ 0 ].height *= dynamicScale;
+	}
+	
 	currentRenderCrop = 0;
 
 	// screenFraction is just for quickly testing fill rate limitations

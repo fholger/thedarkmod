@@ -18,6 +18,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "tr_local.h"
 #include "FrameBuffer.h"
 #include "glsl.h"
+#include "DynamicResolutionScaler.h"
 
 // all false at start
 bool primaryOn = false, shadowOn = false;
@@ -27,6 +28,7 @@ GLuint renderBufferColor, renderBufferDepthStencil, renderBufferPostProcess;
 GLuint postProcessWidth, postProcessHeight;
 int ShadowFboIndex, ShadowMipMap[MAX_LIGHTS];
 float shadowResolution;
+int curViewportWidth, curViewportHeight;
 
 void FB_CreatePrimaryResolve( GLuint width, GLuint height, int msaa ) {
 	if ( !fboPrimary ) {
@@ -550,7 +552,8 @@ void EnterPrimary() {
 	qglClear( GL_COLOR_BUFFER_BIT ); // otherwise transparent skybox blends with previous frame
 
 	primaryOn = true;
-
+	curViewportWidth = backEnd.viewDef->viewport.x2;
+	curViewportHeight = backEnd.viewDef->viewport.y2;
 	GL_CheckErrors();
 }
 
@@ -569,9 +572,7 @@ void LeavePrimary() {
 		qglBindFramebuffer( GL_READ_FRAMEBUFFER, fboResolve );
 	}
 	qglBindFramebuffer( GL_DRAW_FRAMEBUFFER, 0 );
-	qglBlitFramebuffer( 0, 0, globalImages->currentRenderImage->uploadWidth,
-	                    globalImages->currentRenderImage->uploadHeight,
-	                    0, 0, glConfig.vidWidth, glConfig.vidHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR );
+	qglBlitFramebuffer( 0, 0, curViewportWidth, curViewportHeight, 0, 0, glConfig.vidWidth, glConfig.vidHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR );
 
 	if ( r_fboDebug.GetInteger() != 0 ) {
 		if ( r_multiSamples.GetInteger() > 1 ) {

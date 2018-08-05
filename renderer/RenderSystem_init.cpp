@@ -18,6 +18,7 @@
 
 #include "tr_local.h"
 #include "FrameBuffer.h"
+#include "DynamicResolutionScaler.h"
 
 // Vista OpenGL wrapper check
 #ifdef _WIN32
@@ -821,6 +822,8 @@ void R_InitOpenGL( void ) {
 
 	// allocate the vertex array range or vertex objects
 	vertexCache.Init();
+
+	resolutionScaler.Init();
 
 	// allocate the frame data, which may be more if smp is enabled
 	R_InitFrameData();
@@ -1991,6 +1994,7 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 		// free the context and close the window
 		session->TerminateFrontendThread();
 		vertexCache.Shutdown();
+		resolutionScaler.Shutdown();
 		GLimp_Shutdown();
 		glConfig.isInitialized = false;
 

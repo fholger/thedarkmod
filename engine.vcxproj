@@ -572,6 +572,7 @@
     <ClInclude Include="renderer\Cinematic.h" />
     <ClInclude Include="renderer\CinematicFFMpeg.h" />
     <ClInclude Include="renderer\CinematicID.h" />
+    <ClInclude Include="renderer\DynamicResolutionScaler.h" />
     <ClInclude Include="renderer\FrameBuffer.h" />
     <ClInclude Include="renderer\glext.h" />
     <ClInclude Include="renderer\glsl.h" />
@@ -1135,6 +1136,7 @@
     <ClCompile Include="renderer\draw_common.cpp" />
     <ClCompile Include="renderer\draw_glsl.cpp" />
     <ClCompile Include="renderer\draw_stencil.cpp" />
+    <ClCompile Include="renderer\DynamicResolutionScaler.cpp" />
     <ClCompile Include="renderer\FrameBuffer.cpp" />
     <ClCompile Include="renderer\GuiModel.cpp" />
     <ClCompile Include="renderer\Image_files.cpp" />
