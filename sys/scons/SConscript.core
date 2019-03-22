@@ -90,7 +90,8 @@ renderer_string = ' \
 renderer_list = scons_utils.BuildList( 'renderer', renderer_string )
 
 tests_string = ' \
-    TestRun.cpp'
+    TestRun.cpp \
+    SortedMapTest.cpp'
 tests_list = scons_utils.BuildList( 'tests', tests_string)
 
 framework_string = ' \

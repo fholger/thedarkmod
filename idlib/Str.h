@@ -1022,4 +1022,8 @@ ID_INLINE int idStr::DynamicMemoryUsed() const {
 	return ( data == baseBuffer ) ? 0 : alloced;
 }
 
+ID_INLINE bool operator<(const idStr &a, const idStr &b) {
+	return a.Cmp( b ) < 0;
+}
+
 #endif /* !__STR_H__ */
