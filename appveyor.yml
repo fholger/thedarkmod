@@ -6,10 +6,10 @@ image:
 
 configuration:
 - release
-- debug
+
 platform:
-- Win32
 - x64
+
 shallow_clone: true
 
 test: off
@@ -61,6 +61,32 @@ for:
       tar -cSvf thedarkmod.tar "thedarkmod.${PLATFORM}" *.so
 
       bzip2 thedarkmod.tar
+      
+  before_test:
+  - sh: >-
+      mkdir -p script
+      
+      touch script/tdm_defs.script
+      
+      touch script/tdm_main.script
+      
+      mkdir -p materials
+      
+      touch materials/lights.mtr
+      
+      touch materials/tdm_ai_steambots.mtr
+      
+      touch materials/tdm_light_textures.mtr
+      
+      touch materials/tdm_lights_d3_leftover.mtr
+      
+      echo "_default {{map _default}}" > materials/tdm_internal_engine.mtr
+      
+      echo "unbindall" > default.cfg
+      
+  test_script:
+  - sh: >-
+      ./thedarkmod.${PLATFORM} +set com_skipRenderer 1 +set com_runTests 1
 
   artifacts:
   - path: thedarkmod.tar.bz2
