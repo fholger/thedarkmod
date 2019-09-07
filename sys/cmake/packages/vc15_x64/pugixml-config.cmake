@@ -1,0 +1,3 @@
+set(PUGIXML_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/ThirdParty/artefacts/pugixml/include")
+set(PUGIXML_LIBRARY_DIR "${PROJECT_SOURCE_DIR}/ThirdParty/artefacts/pugixml/lib/win64_s_vc15_rel_mt")
+set(PUGIXML_LIBRARIES "${PUGIXML_LIBRARY_DIR}/pugixml.lib")
