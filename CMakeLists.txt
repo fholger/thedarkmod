@@ -9,6 +9,8 @@ project(TheDarkMod VERSION 2.08)
 add_executable(TheDarkMod)
 
 cmake_dependent_option(WITH_TOOLS "Compile with Tools" ON "MSVC" OFF)
+set(GAME_DIR "${PROJECT_SOURCE_DIR}/../darkmod" CACHE STRING "The directory where the game assets are stored")
+option(COPY_EXE "Copy executable to GAME_DIR after build" ON)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -171,4 +173,12 @@ target_link_libraries(TheDarkMod debug ${PUGIXML_LIBRARIES_D} optimized ${PUGIXM
 if (WIN32)
 	target_link_libraries(TheDarkMod ws2_32 iphlpapi winmm bcrypt dinput8 dbghelp)
 	set_target_properties(TheDarkMod PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
+
+if (COPY_EXE)
+	# copy produced executable to game directory '../darkmod'
+	add_custom_command(
+			TARGET TheDarkMod POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:TheDarkMod> "${GAME_DIR}"
+	)
 endif()
