@@ -163,10 +163,10 @@ target_link_libraries(TheDarkMod
     ${DEVIL_LIBRARIES}
     ${JPEG_LIBRARIES}
     ${FFMPEG_LIBRARIES}
-    ${PUGIXML_LIBRARIES}
     ${PNG_LIBRARIES}
     ${MBEDTLS_LIBRARIES}
 )
+target_link_libraries(TheDarkMod debug ${PUGIXML_LIBRARIES_D} optimized ${PUGIXML_LIBRARIES})
 
 if (WIN32)
 	target_link_libraries(TheDarkMod ws2_32 iphlpapi winmm bcrypt dinput8 dbghelp)
