@@ -52,10 +52,10 @@ endif()
 
 if (UNIX)
 	ucm_add_dirs("sys/linux" "sys/posix" TO TDM_SOURCE_FILES RECURSIVE)
-	ucm_remove_files("renderer/glad_wgl.c" FROM TDM_SOURCE_FILES)
+	ucm_remove_files("renderer/glad_wgl.c" "sys/linux/dedicated.cpp" "sys/linux/test_scheduler.c" FROM TDM_SOURCE_FILES)
 elseif (WIN32)
 	ucm_add_dirs("sys/win32" TO TDM_SOURCE_FILES RECURSIVE)
-	ucm_remove_files("renderer/glad_glx.c" FROM TDM_SOURCE_FILES)
+	ucm_remove_files("renderer/glad_glx.c" "tools/compilers/dmap/optimize_gcc.cpp" "idlib/bv/Frustum_gcc.cpp" FROM TDM_SOURCE_FILES)
 endif()
 
 # blacklist dead code files that unfortunately still hang around the repository
@@ -67,10 +67,8 @@ ucm_remove_files(
 		"game/gamesys/Callbacks.cpp"
 		"idlib/ParallelJobList.cpp"
 		"idlib/math/Simd_AltiVec.cpp"
-		"idlib/bv/Frustum_gcc.cpp"
 		"renderer/draw_exp.cpp"
         "sys/win32/win_gamma.cpp"
-		"tools/compilers/dmap/optimize_gcc.cpp"
 		FROM TDM_SOURCE_FILES
 )
 
@@ -107,12 +105,13 @@ if (UNIX)
 			-fvisibility=hidden
 			-fno-unsafe-math-optimizations
 	)
-	# ffmpeg dep was compiled without -fPIC, so need to disable on 64bit builds
 	if (CMAKE_SIZEOF_VOID_P EQUAL 8)
-		add_compile_options(-no-pie)
+		# ffmpeg dep was compiled without -fPIC, so need to disable on 64bit builds
+		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -no-pie")
 	endif()
 	# ensure threading support in X
 	add_compile_definitions(XTHREADS)
+    set(PACKAGE_CONFIG_PATH "${PROJECT_SOURCE_DIR}/sys/cmake/packages/linux_x64")
 elseif (MSVC)
 	add_compile_definitions("WIN32" _WINDOWS
 			_CRT_SECURE_NO_DEPRECATE
@@ -157,22 +156,24 @@ include_directories(
 )
 
 target_link_libraries(TheDarkMod
-    ${ZLIB_LIBRARIES}
-    ${CURL_LIBRARIES}
-    ${OPENAL_LIBRARIES}
-    ${OGG_LIBRARIES}
-    ${VORBIS_LIBRARIES}
-    ${DEVIL_LIBRARIES}
-    ${JPEG_LIBRARIES}
-    ${FFMPEG_LIBRARIES}
-    ${PNG_LIBRARIES}
-    ${MBEDTLS_LIBRARIES}
+		${ZLIB_LIBRARIES}
+		${CURL_LIBRARIES}
+		${OPENAL_LIBRARIES}
+		${VORBIS_LIBRARIES}
+		${OGG_LIBRARIES}
+		${DEVIL_LIBRARIES}
+		${JPEG_LIBRARIES}
+		${FFMPEG_LIBRARIES}
+		${PNG_LIBRARIES}
+		${MBEDTLS_LIBRARIES}
 )
 target_link_libraries(TheDarkMod debug ${PUGIXML_LIBRARIES_D} optimized ${PUGIXML_LIBRARIES})
 
 if (WIN32)
 	target_link_libraries(TheDarkMod ws2_32 iphlpapi winmm bcrypt dinput8 dbghelp)
 	set_target_properties(TheDarkMod PROPERTIES WIN32_EXECUTABLE TRUE)
+elseif(UNIX)
+    target_link_libraries(TheDarkMod pthread dl stdc++fs X11 Xext Xxf86vm)
 endif()
 
 if (COPY_EXE)
