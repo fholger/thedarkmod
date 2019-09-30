@@ -1,11 +1,14 @@
 cmake_minimum_required(VERSION 3.12)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/sys/cmake" "${CMAKE_SOURCE_DIR}/sys/cmake/ThirdParty")
+include(CMakeDependentOption)
 include(ucm)
 include(PrecompiledHeader)
 
 project(TheDarkMod VERSION 2.08)
 add_executable(TheDarkMod)
+
+cmake_dependent_option(WITH_TOOLS "Compile with Tools" ON "MSVC" OFF)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -31,14 +34,26 @@ ucm_add_dirs(
 )
 ucm_add_files("sys/sys_local.cpp" "sys/sys_local.h" "sys/sys_public.h" TO TDM_SOURCE_FILES)
 
+if (WITH_TOOLS)
+    ucm_add_dirs("tools" TO TDM_SOURCE_FILES RECURSIVE)
+	ucm_remove_files(
+			"tools/edit_stub.cpp"
+			"tools/decl/DialogEntityDefEditor.cpp"
+			"tools/common/RenderBumpFlatDialog.cpp"
+			"tools/guied/GEWindowWrapper_stub.cpp"
+			FROM TDM_SOURCE_FILES
+	)
+else()
+	ucm_add_files("tools/guied/GEWindowWrapper_stub.cpp" TO TDM_SOURCE_FILES)
+	add_compile_definitions(NO_MFC)
+endif()
+
 if (UNIX)
 	ucm_add_dirs("sys/linux" "sys/posix" TO TDM_SOURCE_FILES RECURSIVE)
-    ucm_add_files("tools/guied/GEWindowWrapper_stub.cpp" TO TDM_SOURCE_FILES)
+	ucm_remove_files("renderer/glad_wgl.c" FROM TDM_SOURCE_FILES)
 elseif (WIN32)
 	ucm_add_dirs("sys/win32" TO TDM_SOURCE_FILES RECURSIVE)
-	ucm_add_files("tools/guied/GEWindowWrapper_stub.cpp" TO TDM_SOURCE_FILES)
 	ucm_remove_files("renderer/glad_glx.c" FROM TDM_SOURCE_FILES)
-	add_compile_definitions(NO_MFC)
 endif()
 
 # blacklist dead code files that unfortunately still hang around the repository
@@ -48,10 +63,8 @@ ucm_remove_files(
 		"game/Game_network.cpp"
 		"game/MultiplayerGame.cpp"
 		"game/gamesys/Callbacks.cpp"
-		"game/gamesys/TypeInfo.cpp"
 		"idlib/ParallelJobList.cpp"
 		"idlib/math/Simd_AltiVec.cpp"
-		"idlib/precompiled.cpp"
 		"idlib/bv/Frustum_gcc.cpp"
 		"renderer/draw_exp.cpp"
         "sys/win32/win_gamma.cpp"
@@ -106,7 +119,7 @@ elseif (MSVC)
 			NO_WARN_MBCS_MFC_DEPRECATION
 			_MBCS
 			)
-	add_compile_options("/MP")
+	add_compile_options("/MP /Gm-")
 	ucm_set_runtime(STATIC)
 	set(PACKAGE_CONFIG_PATH "${PROJECT_SOURCE_DIR}/sys/cmake/packages/vc15_x64")
 endif()
