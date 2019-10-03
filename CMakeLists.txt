@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 3.12)
+cmake_policy(SET CMP0076 NEW)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/sys/cmake")
 include(CMakeDependentOption)
 include(ucm)
 include(PrecompiledHeader)
+include(SvnVersion)
 
 project(TheDarkMod VERSION 2.08)
 add_executable(TheDarkMod)
@@ -16,8 +18,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# TODO: actual revision number
-set(SVNVERSION "99999")
+get_svn_revision(SVNVERSION)
 configure_file("idlib/svnversion.cmake.h" "${PROJECT_SOURCE_DIR}/idlib/svnversion.h" @ONLY)
 
 # gather list of source files
@@ -75,6 +76,11 @@ ucm_remove_files(
 )
 
 target_sources(TheDarkMod PRIVATE ${TDM_SOURCE_FILES})
+
+if (MSVC)
+	ucm_add_dirs("sys/msvc/natvis" TO TDM_NATVIS_FILES RECURSIVE ADDITIONAL_EXT "natvis")
+	target_sources(TheDarkMod INTERFACE ${TDM_NATVIS_FILES})
+endif()
 
 # configure precompiled header
 # note TypeInfo.cpp must be excluded from precompiled header because it uses some dirty hacks
