@@ -106,12 +106,18 @@ if (UNIX)
 			-fno-unsafe-math-optimizations
 	)
 	if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+		set(PACKAGE_PLATFORM "lnx64_s_gcc5_rel_stdcpp")
+		set(PACKAGE_PLATFORM_DEBUG "lnx64_s_gcc5_rel_stdcpp")
 		# ffmpeg dep was compiled without -fPIC, so need to disable on 64bit builds
+		set_target_properties(TheDarkMod PROPERTIES POSITION_INDEPENDENT_CODE OFF)
 		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -no-pie")
+	else()
+		set(PACKAGE_PLATFORM "lnx32_s_gcc5_rel_stdcpp")
+		set(PACKAGE_PLATFORM_DEBUG "lnx32_s_gcc5_rel_stdcpp")
 	endif()
 	# ensure threading support in X
 	add_compile_definitions(XTHREADS)
-    set(PACKAGE_CONFIG_PATH "${PROJECT_SOURCE_DIR}/sys/cmake/packages/linux_x64")
+    set(PACKAGE_CONFIG_PATH "${PROJECT_SOURCE_DIR}/sys/cmake/packages/linux")
 elseif (MSVC)
 	add_compile_definitions("WIN32" _WINDOWS
 			_CRT_SECURE_NO_DEPRECATE
