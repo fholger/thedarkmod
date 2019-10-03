@@ -127,9 +127,9 @@ elseif (MSVC)
 			_MBCS
 			)
 	add_compile_options("/MP /Gm-")
-	ucm_set_runtime(STATIC)
 	set(PACKAGE_CONFIG_PATH "${PROJECT_SOURCE_DIR}/sys/cmake/packages/vc15_x64")
 endif()
+ucm_set_runtime(STATIC)
 
 find_package(ZLIB REQUIRED HINTS ${PACKAGE_CONFIG_PATH})
 find_package(CURL REQUIRED HINTS ${PACKAGE_CONFIG_PATH})
