@@ -1,5 +1,5 @@
 set(FFMPEG_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/ThirdParty/artefacts/ffmpeg/include")
-set(FFMPEG_LIBRARY_DIR "${PROJECT_SOURCE_DIR}/ThirdParty/artefacts/ffmpeg/lib/win64_s_vc15_rel_mt")
+set(FFMPEG_LIBRARY_DIR "${PROJECT_SOURCE_DIR}/ThirdParty/artefacts/ffmpeg/lib/${PACKAGE_PLATFORM}")
 set(FFMPEG_LIBRARIES
     "${FFMPEG_LIBRARY_DIR}/libavcodec.lib"
     "${FFMPEG_LIBRARY_DIR}/libavformat.lib"

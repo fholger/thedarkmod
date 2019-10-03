@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/sys/cmake" "${CMAKE_SOURCE_DIR}/sys/cmake/ThirdParty")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/sys/cmake")
 include(CMakeDependentOption)
 include(ucm)
 include(PrecompiledHeader)
@@ -52,9 +52,11 @@ endif()
 
 if (UNIX)
 	ucm_add_dirs("sys/linux" "sys/posix" TO TDM_SOURCE_FILES RECURSIVE)
+    ucm_remove_directories("idlib/sys/win32" FROM TDM_SOURCE_FILES)
 	ucm_remove_files("renderer/glad_wgl.c" "sys/linux/dedicated.cpp" "sys/linux/test_scheduler.c" FROM TDM_SOURCE_FILES)
 elseif (WIN32)
 	ucm_add_dirs("sys/win32" TO TDM_SOURCE_FILES RECURSIVE)
+	ucm_remove_directories("idlib/sys/posix" FROM TDM_SOURCE_FILES)
 	ucm_remove_files("renderer/glad_glx.c" "tools/compilers/dmap/optimize_gcc.cpp" "idlib/bv/Frustum_gcc.cpp" FROM TDM_SOURCE_FILES)
 endif()
 
@@ -76,8 +78,8 @@ target_sources(TheDarkMod PRIVATE ${TDM_SOURCE_FILES})
 
 # configure precompiled header
 # note TypeInfo.cpp must be excluded from precompiled header because it uses some dirty hacks
-ucm_remove_files("idlib/precompiled.cpp" "game/gamesys/TypeInfo.cpp" FROM TDM_SOURCE_FILES)
-add_msvc_precompiled_header("precompiled.h" "idlib/precompiled.cpp" TDM_SOURCE_FILES)
+add_precompiled_header(TheDarkMod "idlib/precompiled.h" "idlib/precompiled.cpp" "precompiled.h"
+		EXCLUDE "game/gamesys/TypeInfo.cpp")
 
 add_compile_definitions(
 		"ExtLibs="
@@ -127,7 +129,14 @@ elseif (MSVC)
 			_MBCS
 			)
 	add_compile_options("/MP /Gm-")
-	set(PACKAGE_CONFIG_PATH "${PROJECT_SOURCE_DIR}/sys/cmake/packages/vc15_x64")
+	if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+		set(PACKAGE_PLATFORM "win64_s_vc15_rel_mt")
+		set(PACKAGE_PLATFORM_DEBUG "win64_s_vc15_dbg_mtd")
+    else ()
+		set(PACKAGE_PLATFORM "win32_s_vc15_rel_mt")
+		set(PACKAGE_PLATFORM_DEBUG "win32_s_vc15_dbg_mtd")
+	endif()
+	set(PACKAGE_CONFIG_PATH "${PROJECT_SOURCE_DIR}/sys/cmake/packages/vc15")
 endif()
 ucm_set_runtime(STATIC)
 
