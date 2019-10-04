@@ -127,6 +127,7 @@ if (UNIX)
 	endif()
 	# ensure threading support in X
 	add_compile_definitions(XTHREADS)
+	add_compile_definitions(VK_USE_PLATFORM_XLIB_KHR)
     set(PACKAGE_CONFIG_PATH "${PROJECT_SOURCE_DIR}/sys/cmake/packages/linux")
 elseif (MSVC)
 	add_compile_definitions("WIN32" _WINDOWS
@@ -135,6 +136,7 @@ elseif (MSVC)
 			_ALLOW_KEYWORD_MACROS
 			NO_WARN_MBCS_MFC_DEPRECATION
 			_MBCS
+			VK_USE_PLATFORM_WIN32_KHR
 			)
 	add_compile_options("/MP /Gm-")
 	if (CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -161,11 +163,14 @@ find_package(PUGIXML REQUIRED HINTS ${PACKAGE_CONFIG_PATH})
 find_package(PNG REQUIRED HINTS ${PACKAGE_CONFIG_PATH})
 find_package(MBEDTLS REQUIRED HINTS ${PACKAGE_CONFIG_PATH})
 
+find_package(Vulkan REQUIRED)
+
 include_directories(
 		"${PROJECT_SOURCE_DIR}"
 		"${PROJECT_SOURCE_DIR}/idlib"
 		"${PROJECT_SOURCE_DIR}/framework"
 		"${PROJECT_SOURCE_DIR}/ThirdParty/artefacts/doctest/include"
+		${Vulkan_INCLUDE_DIRS}
 		${ZLIB_INCLUDE_DIRS}
 		${CURL_INCLUDE_DIRS}
 		${OPENAL_INCLUDE_DIRS}
