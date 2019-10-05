@@ -19,7 +19,8 @@
 #pragma hdrstop
 
 #include "VulkanSystem.h"
-#include "vulkan.h"
+
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 idCVar vk_enable("vk_enable", "1", CVAR_BOOL|CVAR_ARCHIVE|CVAR_RENDERER, "Enable the Vulkan rendering system");
 extern idCVar r_customWidth;

@@ -15,6 +15,7 @@
 
 #pragma once
 #include "CVarSystem.h"
+#include "vulkan.h"
 
 extern idCVar vk_enable;
 

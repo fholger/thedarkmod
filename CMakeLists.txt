@@ -163,14 +163,12 @@ find_package(PUGIXML REQUIRED HINTS ${PACKAGE_CONFIG_PATH})
 find_package(PNG REQUIRED HINTS ${PACKAGE_CONFIG_PATH})
 find_package(MBEDTLS REQUIRED HINTS ${PACKAGE_CONFIG_PATH})
 
-find_package(Vulkan REQUIRED)
-
 include_directories(
 		"${PROJECT_SOURCE_DIR}"
 		"${PROJECT_SOURCE_DIR}/idlib"
 		"${PROJECT_SOURCE_DIR}/framework"
 		"${PROJECT_SOURCE_DIR}/ThirdParty/artefacts/doctest/include"
-		${Vulkan_INCLUDE_DIRS}
+		"${PROJECT_SOURCE_DIR}/ThirdParty/artefacts/vulkan/include"
 		${ZLIB_INCLUDE_DIRS}
 		${CURL_INCLUDE_DIRS}
 		${OPENAL_INCLUDE_DIRS}
