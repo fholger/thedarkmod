@@ -23,6 +23,7 @@
 #include "Session_local.h"
 #include "Debug.h"
 #include <iostream>
+#include <renderer/vulkan/VulkanSystem.h>
 
 #define MAX_WARNING_LIST	256
 
@@ -2427,7 +2428,9 @@ idCommonLocal::InitRenderSystem
 void idCommonLocal::InitRenderSystem( void ) {
 	if ( com_skipRenderer.GetBool() ) {
 		return;
-	} else {
+	} else if (vk_enable.GetBool()) {
+        vulkan->Initialize();
+    } else {
 		renderSystem->InitOpenGL();
 	}
 }
