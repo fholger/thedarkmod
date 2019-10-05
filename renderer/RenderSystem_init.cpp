@@ -20,6 +20,7 @@
 #include "FrameBuffer.h"
 #include "glsl.h"
 #include "GLSLProgramManager.h"
+#include "vulkan/VulkanSystem.h"
 
 // Vista OpenGL wrapper check
 #ifdef _WIN32
@@ -1838,6 +1839,8 @@ void idRenderSystemLocal::Shutdown( void ) {
 	// free frame memory
 	R_ShutdownFrameData();
 
+	if (vk_enable.GetBool())
+		return;  // TEMP TODO
 	// free the vertex cache, which should have nothing allocated now
 	vertexCache.Shutdown();
 

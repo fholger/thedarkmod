@@ -51,7 +51,14 @@ void VulkanSystem::Initialize() {
         common->FatalError("Failed to create render window");
     }
 
-    CreateInstance();
+    try {
+        CreateInstance();
+    } catch (vk::Error& e) {
+        common->Printf("Initializing Vulkan failed: %s\n", e.what());
+        common->Warning("Initializing Vulkan failed: %s", e.what());
+        Sys_Sleep(500);
+        common->FatalError("Initializing Vulkan failed: %s", e.what());
+    }
 
     common->Printf("Vulkan initialized.\n");
     common->FatalError("Vulkan not implemented yet");
@@ -74,6 +81,13 @@ void VulkanSystem::CreateInstance() {
     vk::DynamicLoader dl;
     VULKAN_HPP_DEFAULT_DISPATCHER.init(dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
 
+    auto availableExtensions = vk::enumerateInstanceExtensionProperties();
+    common->Printf("Avaiable vk instance extensions: ");
+    for (auto extension : availableExtensions) {
+        common->Printf("%s ", extension.extensionName);
+    }
+    common->Printf("\n");
+
     vk::ApplicationInfo appInfo (
             "TheDarkMod",
             VK_MAKE_VERSION(TDM_VERSION_MAJOR,TDM_VERSION_MINOR,0),
@@ -81,13 +95,15 @@ void VulkanSystem::CreateInstance() {
             VK_MAKE_VERSION(TDM_VERSION_MAJOR,TDM_VERSION_MINOR,0),
             VK_API_VERSION_1_1
     );
+
+    idList<const char*> extensions = qvk_RequiredInstanceExtensions();
     vk::InstanceCreateInfo createInfo (
             vk::InstanceCreateFlags(),
             &appInfo,
             0,
-            nullptr,
-            0,
-            nullptr
+			nullptr,
+			extensions.Num(),
+            extensions.Ptr()
     );
     vkInstance = vk::createInstance(createInfo);
     VULKAN_HPP_DEFAULT_DISPATCHER.init(vkInstance);

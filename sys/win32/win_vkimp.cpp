@@ -19,6 +19,7 @@
 #include "Common.h"
 #include "Str.h"
 #include "rc/doom_resource.h"
+#include "renderer/vulkan/vulkan.h"
 
 static void qvk_WinCreateWindowClasses() {
     WNDCLASS wc;
@@ -171,4 +172,11 @@ bool qvk_InitRenderWindow(bool fullscreen, int width, int height) {
     }
 
     return true;
+}
+
+idList<const char*> qvk_RequiredInstanceExtensions() {
+    idList<const char*> extensions;
+    extensions.Append(VK_KHR_SURFACE_EXTENSION_NAME);
+    extensions.Append(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+    return extensions;
 }
