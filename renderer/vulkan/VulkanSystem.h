@@ -24,6 +24,9 @@ public:
     void Initialize();
 
 private:
+    vk::Instance vkInstance;
+
+    void CreateInstance();
 };
 
 extern VulkanSystem *vulkan;

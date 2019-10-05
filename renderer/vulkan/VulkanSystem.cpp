@@ -14,7 +14,6 @@
 ******************************************************************************/
 
 #include <renderer/tr_local.h>
-#include <renderer/FrameBuffer.h>
 #include "precompiled.h"
 #pragma hdrstop
 
@@ -46,8 +45,15 @@ void VulkanSystem::Initialize() {
         windowHeight = r_customHeight.GetInteger();
     }
 
-    common->Printf("Using resolution %dx%d", windowWidth, windowHeight);
+    common->Printf("Using resolution %dx%d\n", windowWidth, windowHeight);
 
+    if (!qvk_InitRenderWindow(false, windowWidth, windowHeight)) {
+        common->FatalError("Failed to create render window");
+    }
+
+    CreateInstance();
+
+    common->Printf("Vulkan initialized.\n");
     common->FatalError("Vulkan not implemented yet");
 
     //parms.width = glConfig.vidWidth;
@@ -60,4 +66,29 @@ void VulkanSystem::Initialize() {
     //    // it worked
     //    break;
     //}
+}
+
+void VulkanSystem::CreateInstance() {
+    common->Printf("Creating Vulkan instance\n");
+
+    vk::DynamicLoader dl;
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
+
+    vk::ApplicationInfo appInfo (
+            "TheDarkMod",
+            VK_MAKE_VERSION(TDM_VERSION_MAJOR,TDM_VERSION_MINOR,0),
+            "TheDarkMod",
+            VK_MAKE_VERSION(TDM_VERSION_MAJOR,TDM_VERSION_MINOR,0),
+            VK_API_VERSION_1_1
+    );
+    vk::InstanceCreateInfo createInfo (
+            vk::InstanceCreateFlags(),
+            &appInfo,
+            0,
+            nullptr,
+            0,
+            nullptr
+    );
+    vkInstance = vk::createInstance(createInfo);
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(vkInstance);
 }
