@@ -14,26 +14,17 @@
 ******************************************************************************/
 
 #pragma once
-#include "CVarSystem.h"
 #include "vulkan.h"
-#include "VulkanDevice.h"
 
-extern idCVar vk_enable;
-
-class VulkanSystem {
+class VulkanDevice {
 public:
-    ~VulkanSystem() { Destroy(); }
+    explicit VulkanDevice(vk::PhysicalDevice device);
+    ~VulkanDevice();
 
-    void Initialize();
-    void Destroy();
+    idStr Name() const;
+
+    static VulkanDevice *GetSuitableDevice(vk::Instance instance);
 
 private:
-    vk::Instance instance;
-    vk::DebugUtilsMessengerEXT debugMessenger;
-    std::unique_ptr<VulkanDevice> device;
-
-    void CreateInstance();
-    void SetupDebugMessenger();
+    vk::PhysicalDevice device;
 };
-
-extern VulkanSystem *vulkan;

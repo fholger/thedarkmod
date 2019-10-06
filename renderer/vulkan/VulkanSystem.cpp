@@ -13,20 +13,62 @@
  
 ******************************************************************************/
 
-#include <renderer/tr_local.h>
 #include "precompiled.h"
 #pragma hdrstop
 
+#include "renderer/tr_local.h"
 #include "VulkanSystem.h"
+#include "VulkanDevice.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 idCVar vk_enable("vk_enable", "1", CVAR_BOOL|CVAR_ARCHIVE|CVAR_RENDERER, "Enable the Vulkan rendering system");
+idCVar vk_validation("vk_validation", "1", CVAR_BOOL|CVAR_ARCHIVE|CVAR_RENDERER, "Enable Vulkan validation layers");
 extern idCVar r_customWidth;
 extern idCVar r_customHeight;
 
 VulkanSystem vulkanImpl;
 VulkanSystem *vulkan = &vulkanImpl;
+
+namespace {
+    std::vector<const char*> validationLayers { "VK_LAYER_KHRONOS_validation" };
+
+    bool checkValidationLayersSupported() {
+        auto availableLayers = vk::enumerateInstanceLayerProperties();
+        for (std::string neededLayer : validationLayers) {
+            bool supported = false;
+            for (const auto& layer : availableLayers) {
+                if (neededLayer == layer.layerName) {
+                    supported = true;
+                    break;
+                }
+            }
+            if (!supported) {
+                common->Printf("Layer %s is not suported\n", neededLayer.c_str());
+                return false;
+            }
+        }
+        return true;
+    }
+
+    std::vector<const char*> getRequiredExtensions() {
+        auto platformExtensions = qvk_RequiredInstanceExtensions();
+        std::vector<const char*> extensions (platformExtensions.begin(), platformExtensions.end());
+        if (vk_validation.GetBool()) {
+            extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        }
+        return extensions;
+    }
+
+    VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+            VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+            VkDebugUtilsMessageTypeFlagsEXT messageType,
+            const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+            void *pUserData) {
+        common->Printf(S_COLOR_YELLOW "Vulkan: %s\n", pCallbackData->pMessage);
+        return VK_FALSE;
+    }
+}
 
 void VulkanSystem::Initialize() {
     common->Printf( "----- Initializing Vulkan -----\n" );
@@ -53,10 +95,12 @@ void VulkanSystem::Initialize() {
 
     try {
         CreateInstance();
+        if (vk_validation.GetBool()) {
+            SetupDebugMessenger();
+        }
+        device.reset(VulkanDevice::GetSuitableDevice(instance));
+        common->Printf("Using device %s for rendering\n", device->Name().c_str());
     } catch (vk::Error& e) {
-        common->Printf("Initializing Vulkan failed: %s\n", e.what());
-        common->Warning("Initializing Vulkan failed: %s", e.what());
-        Sys_Sleep(500);
         common->FatalError("Initializing Vulkan failed: %s", e.what());
     }
 
@@ -75,11 +119,25 @@ void VulkanSystem::Initialize() {
     //}
 }
 
+void VulkanSystem::Destroy() {
+    if (debugMessenger) {
+        instance.destroy(debugMessenger);
+    }
+    instance.destroy();
+}
+
 void VulkanSystem::CreateInstance() {
     common->Printf("Creating Vulkan instance\n");
 
     vk::DynamicLoader dl;
     VULKAN_HPP_DEFAULT_DISPATCHER.init(dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
+
+    auto availableLayers = vk::enumerateInstanceLayerProperties();
+    common->Printf("Available vk instance layers: ");
+    for (auto layer : availableLayers) {
+        common->Printf("%s ", layer.layerName);
+    }
+    common->Printf("\n");
 
     auto availableExtensions = vk::enumerateInstanceExtensionProperties();
     common->Printf("Avaiable vk instance extensions: ");
@@ -96,15 +154,38 @@ void VulkanSystem::CreateInstance() {
             VK_API_VERSION_1_1
     );
 
-    idList<const char*> extensions = qvk_RequiredInstanceExtensions();
+    std::vector<const char*> layers;
+    if (vk_validation.GetBool()) {
+        if (checkValidationLayersSupported()) {
+            common->Printf("Enabling Vulkan validation layers\n");
+            layers.insert(layers.end(), validationLayers.begin(), validationLayers.end());
+        } else {
+            common->Warning("Vulkan validation requested, but validation layers are not supported");
+            vk_validation.SetBool(false);
+        }
+    }
+
+    std::vector<const char*> extensions = getRequiredExtensions();
     vk::InstanceCreateInfo createInfo (
             vk::InstanceCreateFlags(),
             &appInfo,
-            0,
-			nullptr,
-			extensions.Num(),
-            extensions.Ptr()
+            (uint32_t)layers.size(),
+			layers.data(),
+            (uint32_t)extensions.size(),
+            extensions.data()
     );
-    vkInstance = vk::createInstance(createInfo);
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(vkInstance);
+    instance = vk::createInstance(createInfo);
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
+}
+
+void VulkanSystem::SetupDebugMessenger() {
+    common->Printf("Setting up Vulkan debug messenger\n");
+    vk::DebugUtilsMessengerCreateInfoEXT createInfo (
+            vk::DebugUtilsMessengerCreateFlagsEXT(),
+            vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
+            vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation,
+            debugCallback,
+            nullptr
+    );
+    instance.createDebugUtilsMessengerEXT(createInfo);
 }
