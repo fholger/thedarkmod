@@ -17,16 +17,37 @@
 #include "VulkanDevice.h"
 
 namespace {
+    QueueFamilyIndices FindQueueFamilies(vk::PhysicalDevice device) {
+        QueueFamilyIndices indices;
+        auto queueFamilyProperties = device.getQueueFamilyProperties();
+        for (int i = 0; i < queueFamilyProperties.size(); ++i) {
+            const auto &queueFamily = queueFamilyProperties[i];
+            if (queueFamily.queueCount > 0 && queueFamily.queueFlags & vk::QueueFlagBits::eGraphics) {
+                indices.graphics = i;
+                indices.present |= vk::QueueFlagBits::eGraphics;
+            }
+            if (indices.AllPresent()) {
+                break;
+            }
+        }
+        return indices;
+    }
+
     int ScoreDeviceSuitability(vk::PhysicalDevice device) {
         auto properties = device.getProperties();
         auto features = device.getFeatures();
+        auto queues = FindQueueFamilies(device);
+
+        if (!queues.AllPresent()) {
+            return 0;
+        }
 
         int score = 0;
 
         if (properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu) {
             score += 1000;
         }
-        if (properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu) {
+        else if (properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu) {
             score += 100;
         }
 
@@ -34,7 +55,9 @@ namespace {
     }
 }
 
-VulkanDevice::VulkanDevice(vk::PhysicalDevice device) : device(device) {}
+VulkanDevice::VulkanDevice(vk::PhysicalDevice device) : physicalDevice(device) {
+    queueFamilies = FindQueueFamilies(device);
+}
 
 VulkanDevice::~VulkanDevice() {
 }
@@ -63,5 +86,28 @@ VulkanDevice *VulkanDevice::GetSuitableDevice(vk::Instance instance) {
 }
 
 idStr VulkanDevice::Name() const {
-    return device.getProperties().deviceName;
+    return physicalDevice.getProperties().deviceName;
+}
+
+void VulkanDevice::CreateLogicalDevice() {
+    float queuePriority = 1.0f;
+    vk::DeviceQueueCreateInfo queueCreateInfo (
+            vk::DeviceQueueCreateFlags(),
+            queueFamilies.graphics,
+            1,
+            &queuePriority
+    );
+    vk::DeviceCreateInfo createInfo (
+            vk::DeviceCreateFlags(),
+            1,
+            &queueCreateInfo,
+            0,
+            nullptr,
+            0,
+            nullptr,
+            nullptr
+    );
+
+    logicalDevice = physicalDevice.createDeviceUnique(createInfo);
+    graphicsQueue = logicalDevice->getQueue(queueFamilies.graphics, 0);
 }

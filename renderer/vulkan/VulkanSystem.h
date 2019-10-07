@@ -28,8 +28,8 @@ public:
     void Destroy();
 
 private:
-    vk::Instance instance;
-    vk::DebugUtilsMessengerEXT debugMessenger;
+    vk::UniqueInstance instance;
+    vk::UniqueDebugUtilsMessengerEXT debugMessenger;
     std::unique_ptr<VulkanDevice> device;
 
     void CreateInstance();

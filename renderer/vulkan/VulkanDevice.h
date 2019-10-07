@@ -16,15 +16,30 @@
 #pragma once
 #include "vulkan.h"
 
+struct QueueFamilyIndices {
+    uint32_t graphics;
+    vk::QueueFlags present;
+
+    bool AllPresent() const {
+        return (bool)(present & vk::QueueFlagBits::eGraphics);
+    }
+};
+
 class VulkanDevice {
 public:
-    explicit VulkanDevice(vk::PhysicalDevice device);
     ~VulkanDevice();
 
     idStr Name() const;
 
     static VulkanDevice *GetSuitableDevice(vk::Instance instance);
 
+    void CreateLogicalDevice();
+
 private:
-    vk::PhysicalDevice device;
+    vk::PhysicalDevice physicalDevice;
+    QueueFamilyIndices queueFamilies;
+    vk::UniqueDevice logicalDevice;
+    vk::Queue graphicsQueue;
+
+    explicit VulkanDevice(vk::PhysicalDevice device);
 };

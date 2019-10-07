@@ -98,8 +98,9 @@ void VulkanSystem::Initialize() {
         if (vk_validation.GetBool()) {
             SetupDebugMessenger();
         }
-        device.reset(VulkanDevice::GetSuitableDevice(instance));
+        device.reset(VulkanDevice::GetSuitableDevice(instance.get()));
         common->Printf("Using device %s for rendering\n", device->Name().c_str());
+        device->CreateLogicalDevice();
     } catch (vk::Error& e) {
         common->FatalError("Initializing Vulkan failed: %s", e.what());
     }
@@ -120,10 +121,6 @@ void VulkanSystem::Initialize() {
 }
 
 void VulkanSystem::Destroy() {
-    if (debugMessenger) {
-        instance.destroy(debugMessenger);
-    }
-    instance.destroy();
 }
 
 void VulkanSystem::CreateInstance() {
@@ -174,8 +171,8 @@ void VulkanSystem::CreateInstance() {
             (uint32_t)extensions.size(),
             extensions.data()
     );
-    instance = vk::createInstance(createInfo);
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
+    instance = vk::createInstanceUnique(createInfo);
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(instance.get());
 }
 
 void VulkanSystem::SetupDebugMessenger() {
@@ -187,5 +184,5 @@ void VulkanSystem::SetupDebugMessenger() {
             debugCallback,
             nullptr
     );
-    instance.createDebugUtilsMessengerEXT(createInfo);
+    debugMessenger = instance->createDebugUtilsMessengerEXTUnique(createInfo);
 }
