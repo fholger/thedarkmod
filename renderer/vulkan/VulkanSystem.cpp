@@ -19,6 +19,7 @@
 #include "renderer/tr_local.h"
 #include "VulkanSystem.h"
 #include "VulkanDevice.h"
+#include "qvk_platform.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -98,7 +99,8 @@ void VulkanSystem::Initialize() {
         if (vk_validation.GetBool()) {
             SetupDebugMessenger();
         }
-        device.reset(VulkanDevice::GetSuitableDevice(instance.get()));
+        windowSurface.reset(qvk_CreateWindowSurface(instance.get()));
+        device.reset(VulkanDevice::GetSuitableDevice(instance.get(), windowSurface.get()));
         common->Printf("Using device %s for rendering\n", device->Name().c_str());
         device->CreateLogicalDevice();
     } catch (vk::Error& e) {

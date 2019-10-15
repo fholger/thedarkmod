@@ -18,10 +18,10 @@
 
 struct QueueFamilyIndices {
     uint32_t graphics;
-    vk::QueueFlags present;
+    vk::QueueFlags available;
 
     bool AllPresent() const {
-        return (bool)(present & vk::QueueFlagBits::eGraphics);
+        return (bool)(available & vk::QueueFlagBits::eGraphics);
     }
 };
 
@@ -31,7 +31,7 @@ public:
 
     idStr Name() const;
 
-    static VulkanDevice *GetSuitableDevice(vk::Instance instance);
+    static VulkanDevice *GetSuitableDevice(vk::Instance instance, vk::SurfaceKHR presentationSurface);
 
     void CreateLogicalDevice();
 
@@ -41,5 +41,5 @@ private:
     vk::UniqueDevice logicalDevice;
     vk::Queue graphicsQueue;
 
-    explicit VulkanDevice(vk::PhysicalDevice device);
+    explicit VulkanDevice(vk::PhysicalDevice device, QueueFamilyIndices queueFamilies);
 };

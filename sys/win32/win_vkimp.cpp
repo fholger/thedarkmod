@@ -15,11 +15,11 @@
 
 #include "precompiled.h"
 #include "win_local.h"
+#include "renderer/vulkan/qvk_platform.h"
 #include "renderer/tr_local.h"
 #include "Common.h"
 #include "Str.h"
 #include "rc/doom_resource.h"
-#include "renderer/vulkan/vulkan.h"
 
 static void qvk_WinCreateWindowClasses() {
     WNDCLASS wc;
@@ -179,4 +179,13 @@ idList<const char*> qvk_RequiredInstanceExtensions() {
     extensions.Append(VK_KHR_SURFACE_EXTENSION_NAME);
     extensions.Append(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
     return extensions;
+}
+
+vk::SurfaceKHR qvk_CreateWindowSurface(vk::Instance instance) {
+    vk::Win32SurfaceCreateInfoKHR createInfo (
+            vk::Win32SurfaceCreateFlagsKHR(),
+            win32.hInstance,
+            win32.hWnd
+    );
+    return instance.createWin32SurfaceKHR(createInfo);
 }

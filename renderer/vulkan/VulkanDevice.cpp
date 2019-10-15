@@ -17,14 +17,15 @@
 #include "VulkanDevice.h"
 
 namespace {
-    QueueFamilyIndices FindQueueFamilies(vk::PhysicalDevice device) {
+    QueueFamilyIndices FindQueueFamilies(vk::PhysicalDevice device, vk::SurfaceKHR presentationSurface) {
         QueueFamilyIndices indices;
         auto queueFamilyProperties = device.getQueueFamilyProperties();
         for (int i = 0; i < queueFamilyProperties.size(); ++i) {
             const auto &queueFamily = queueFamilyProperties[i];
-            if (queueFamily.queueCount > 0 && queueFamily.queueFlags & vk::QueueFlagBits::eGraphics) {
+            bool presentationSupport = device.getSurfaceSupportKHR(i, presentationSurface);
+            if (queueFamily.queueCount > 0 && (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics) && presentationSupport) {
                 indices.graphics = i;
-                indices.present |= vk::QueueFlagBits::eGraphics;
+                indices.available |= vk::QueueFlagBits::eGraphics;
             }
             if (indices.AllPresent()) {
                 break;
@@ -33,10 +34,10 @@ namespace {
         return indices;
     }
 
-    int ScoreDeviceSuitability(vk::PhysicalDevice device) {
+    int ScoreDeviceSuitability(vk::PhysicalDevice device, vk::SurfaceKHR presentationSurface) {
         auto properties = device.getProperties();
         auto features = device.getFeatures();
-        auto queues = FindQueueFamilies(device);
+        auto queues = FindQueueFamilies(device, presentationSurface);
 
         if (!queues.AllPresent()) {
             return 0;
@@ -55,18 +56,16 @@ namespace {
     }
 }
 
-VulkanDevice::VulkanDevice(vk::PhysicalDevice device) : physicalDevice(device) {
-    queueFamilies = FindQueueFamilies(device);
-}
+VulkanDevice::VulkanDevice(vk::PhysicalDevice device, QueueFamilyIndices queueFamilies)
+    : physicalDevice(device), queueFamilies(queueFamilies) { }
 
-VulkanDevice::~VulkanDevice() {
-}
+VulkanDevice::~VulkanDevice() { }
 
-VulkanDevice *VulkanDevice::GetSuitableDevice(vk::Instance instance) {
+VulkanDevice *VulkanDevice::GetSuitableDevice(vk::Instance instance, vk::SurfaceKHR presentationSurface) {
     auto physicalDevices = instance.enumeratePhysicalDevices();
     std::map<int, vk::PhysicalDevice> suitableDevices;
     for (auto device : physicalDevices) {
-        int score = ScoreDeviceSuitability(device);
+        int score = ScoreDeviceSuitability(device, presentationSurface);
         if (score > 0) {
             suitableDevices.insert(std::make_pair(score, device));
         }
@@ -82,7 +81,8 @@ VulkanDevice *VulkanDevice::GetSuitableDevice(vk::Instance instance) {
     }
 
     // TODO: make device explicitly selectable via cvar
-    return new VulkanDevice(suitableDevices.rbegin()->second);
+    auto device = suitableDevices.rbegin()->second;
+    return new VulkanDevice(device, FindQueueFamilies(device, presentationSurface));
 }
 
 idStr VulkanDevice::Name() const {

@@ -12,29 +12,11 @@
  Project: The Dark Mod (http://www.thedarkmod.com/)
  
 ******************************************************************************/
-
 #pragma once
-#include "CVarSystem.h"
 #include "vulkan.h"
-#include "VulkanDevice.h"
 
-extern idCVar vk_enable;
+bool qvk_InitRenderWindow(bool fullscreen, int width, int height);
 
-class VulkanSystem {
-public:
-    ~VulkanSystem() { Destroy(); }
+idList<const char*> qvk_RequiredInstanceExtensions();
 
-    void Initialize();
-    void Destroy();
-
-private:
-    vk::UniqueInstance instance;
-    vk::UniqueDebugUtilsMessengerEXT debugMessenger;
-    vk::UniqueSurfaceKHR windowSurface;
-    std::unique_ptr<VulkanDevice> device;
-
-    void CreateInstance();
-    void SetupDebugMessenger();
-};
-
-extern VulkanSystem *vulkan;
+vk::SurfaceKHR qvk_CreateWindowSurface(vk::Instance instance);

@@ -1223,9 +1223,6 @@ void		GLimp_DeactivateContext( void );
 
 //void		GLimp_EnableLogging( bool enable );
 
-bool qvk_InitRenderWindow(bool fullscreen, int width, int height);
-idList<const char*> qvk_RequiredInstanceExtensions();
-
 /*
 ====================================================================
 
