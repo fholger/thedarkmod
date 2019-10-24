@@ -17,6 +17,8 @@
 #include "VulkanDevice.h"
 
 namespace {
+	const std::vector<const char*> requiredExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+
     QueueFamilyIndices FindQueueFamilies(vk::PhysicalDevice device, vk::SurfaceKHR presentationSurface) {
         QueueFamilyIndices indices;
         auto queueFamilyProperties = device.getQueueFamilyProperties();
@@ -34,6 +36,29 @@ namespace {
         return indices;
     }
 
+	bool CheckRequiredExtensionsSupport(vk::PhysicalDevice device)
+    {
+		std::set<std::string> availableExtensions;
+	    for (auto extension : device.enumerateDeviceExtensionProperties()) {
+			availableExtensions.insert(extension.extensionName);
+	    }
+
+		for (auto extension : requiredExtensions) {
+			if (availableExtensions.find( extension ) == availableExtensions.end()) {
+				return false;
+			}
+		}
+		return true;
+    }
+
+	SwapChainSupportDetails QuerySwapChainSupport(vk::PhysicalDevice device, vk::SurfaceKHR surface) {
+		SwapChainSupportDetails details;
+		details.capabilities = device.getSurfaceCapabilitiesKHR( surface );
+		details.formats = device.getSurfaceFormatsKHR(surface);
+		details.presentModes = device.getSurfacePresentModesKHR(surface);
+		return details;
+    }
+
     int ScoreDeviceSuitability(vk::PhysicalDevice device, vk::SurfaceKHR presentationSurface) {
         auto properties = device.getProperties();
         auto features = device.getFeatures();
@@ -42,6 +67,15 @@ namespace {
         if (!queues.AllPresent()) {
             return 0;
         }
+
+		if (!CheckRequiredExtensionsSupport(device)) {
+			return 0;
+    	}
+
+		SwapChainSupportDetails swapChainSupport = QuerySwapChainSupport(device, presentationSurface);
+    	if (swapChainSupport.formats.empty() || swapChainSupport.presentModes.empty()) {
+			return 0;
+    	}
 
         int score = 0;
 
@@ -103,8 +137,8 @@ void VulkanDevice::CreateLogicalDevice() {
             &queueCreateInfo,
             0,
             nullptr,
-            0,
-            nullptr,
+            requiredExtensions.size(),
+            requiredExtensions.data(),
             nullptr
     );
 
