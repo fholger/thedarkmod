@@ -1,0 +1,37 @@
+/*****************************************************************************
+                    The Dark Mod GPL Source Code
+ 
+ This file is part of the The Dark Mod Source Code, originally based 
+ on the Doom 3 GPL Source Code as published in 2011.
+ 
+ The Dark Mod Source Code is free software: you can redistribute it 
+ and/or modify it under the terms of the GNU General Public License as 
+ published by the Free Software Foundation, either version 3 of the License, 
+ or (at your option) any later version. For details, see LICENSE.TXT.
+ 
+ Project: The Dark Mod (http://www.thedarkmod.com/)
+ 
+******************************************************************************/
+#include "precompiled.h"
+#include "Backend.h"
+
+Backend backendImpl;
+Backend *backend = &backendImpl;
+
+idCVar r_newBackend( "r_newBackend", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "Use the experimental new render backend" );
+
+Backend::Backend() {
+
+}
+
+void Backend::Init() {
+
+}
+
+void Backend::Shutdown() {
+
+}
+
+void Backend::ExecuteRenderCommands(const emptyCommand_t *cmds) {
+
+}

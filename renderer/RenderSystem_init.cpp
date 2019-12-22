@@ -14,6 +14,7 @@
 ******************************************************************************/
 
 #include "precompiled.h"
+#include <renderer/Backend/Backend.h>
 #pragma hdrstop
 
 #include "tr_local.h"
@@ -1786,6 +1787,8 @@ void idRenderSystemLocal::Init( void ) {
 
 	renderModelManager->Init();
 
+	backend->Init();
+
 	// set the identity space
 	identitySpace.modelMatrix[0 * 4 + 0] = 1.0f;
 	identitySpace.modelMatrix[1 * 4 + 1] = 1.0f;
@@ -1802,6 +1805,8 @@ idRenderSystemLocal::Shutdown
 void idRenderSystemLocal::Shutdown( void ) {
 	common->Printf( "idRenderSystem::Shutdown()\n" );
 	R_DoneFreeType( );
+
+	backend->Shutdown();
 
 	if ( glConfig.isInitialized ) {
 		globalImages->PurgeAllImages();
