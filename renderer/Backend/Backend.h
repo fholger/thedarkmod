@@ -27,7 +27,7 @@ public:
 	void ExecuteRenderCommands(const emptyCommand_t *cmds);
 
 private:
-
+	void DrawView(const viewDef_t *viewDef);
 };
 
 extern Backend *backend;

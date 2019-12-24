@@ -16,10 +16,10 @@
 #pragma once
 
 
-class PersistentBufferObject {
+class ParameterBufferObject {
 public:
-	PersistentBufferObject();
-	~PersistentBufferObject();
+	ParameterBufferObject();
+	~ParameterBufferObject();
 
 	void Init( GLenum target, GLuint size, GLuint alignment = 32 );
 	void Destroy();

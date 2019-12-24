@@ -14,6 +14,8 @@
 ******************************************************************************/
 #include "precompiled.h"
 #include "Backend.h"
+#include "../tr_local.h"
+#include <renderer/FrameBuffer.h>
 
 Backend backendImpl;
 Backend *backend = &backendImpl;
@@ -33,5 +35,91 @@ void Backend::Shutdown() {
 }
 
 void Backend::ExecuteRenderCommands(const emptyCommand_t *cmds) {
+    if ( cmds->commandId == RC_NOP && !cmds->next ) {
+        return;
+    }
 
+    // needed for editor rendering
+    RB_SetDefaultGLState();
+
+    bool isv3d = false, fboOff = false; // needs to be declared outside of switch case
+
+    while ( cmds ) {
+        switch ( cmds->commandId ) {
+            case RC_NOP:
+                break;
+            case RC_DRAW_VIEW: {
+                const viewDef_t *viewDef = ( ( const drawSurfsCommand_t * )cmds )->viewDef;
+                isv3d = ( viewDef->viewEntitys != nullptr );	// view is 2d or 3d
+                if ( !viewDef->IsLightGem() ) {					// duzenko #4425: create/switch to framebuffer object
+                    if ( !fboOff ) {									// don't switch to FBO if bloom or some 2d has happened
+                        if ( isv3d ) {
+                            FB_TogglePrimary( true );
+                        } else {
+                            FB_TogglePrimary( false );					// duzenko: render 2d in default framebuffer, as well as all 3d until frame end
+                            fboOff = true;
+                        }
+                    }
+                }
+                DrawView(viewDef);
+                GL_CheckErrors();
+                break;
+            }
+            case RC_SET_BUFFER:
+                // TODO: probably irrelevant in new render flow with FBOs
+                //RB_SetBuffer( cmds );
+                break;
+            case RC_BLOOM:
+                RB_Bloom();
+                fboOff = true;
+                break;
+            case RC_COPY_RENDER:
+                void RB_CopyRender( const void *data );
+                RB_CopyRender( cmds );
+                break;
+            case RC_SWAP_BUFFERS:
+                // duzenko #4425: display the fbo content
+                FB_TogglePrimary( false );
+                const void RB_SwapBuffers( const void *data );
+                RB_SwapBuffers( cmds );
+                break;
+            default:
+                common->Error( "RB_ExecuteBackEndCommands: bad commandId" );
+                break;
+        }
+        cmds = ( const emptyCommand_t * )cmds->next;
+    }
+
+    // go back to the default texture so the editor doesn't mess up a bound image
+    qglBindTexture( GL_TEXTURE_2D, 0 );
+    GL_CheckErrors();
+    backEnd.glState.tmu[0].current2DMap = -1;
+}
+
+void Backend::DrawView(const viewDef_t *viewDef) {
+    // TODO: needed for compatibility with existing code
+    backEnd.viewDef = viewDef;
+
+    // we will need to do a new copyTexSubImage of the screen when a SS_POST_PROCESS material is used
+    backEnd.currentRenderCopied = false;
+    backEnd.afterFogRendered = false;
+
+    // if there aren't any drawsurfs, do nothing
+    if ( !viewDef->numDrawSurfs ) {
+        //return;
+    }
+
+    // skip render bypasses everything that has models, assuming
+    // them to be 3D views, but leaves 2D rendering visible
+    else if ( viewDef->viewEntitys && r_skipRender.GetBool() ) {
+        return;
+    }
+
+    backEnd.pc.c_surfaces += viewDef->numDrawSurfs;
+
+    // TODO: Do we want this?
+    //RB_ShowOverdraw();
+
+    // render the scene, jumping to the hardware specific interaction renderers
+    RB_STD_DrawView();
 }
