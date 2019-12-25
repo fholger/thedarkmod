@@ -14,8 +14,8 @@
 ******************************************************************************/
 #include "precompiled.h"
 #include "Backend.h"
-#include "../tr_local.h"
 #include <renderer/FrameBuffer.h>
+#include <renderer/Profiling.h>
 
 Backend backendImpl;
 Backend *backend = &backendImpl;
@@ -27,11 +27,11 @@ Backend::Backend() {
 }
 
 void Backend::Init() {
-
+    depthStage.Init();
 }
 
 void Backend::Shutdown() {
-
+    depthStage.Shutdown();
 }
 
 void Backend::ExecuteRenderCommands(const emptyCommand_t *cmds) {
@@ -120,6 +120,50 @@ void Backend::DrawView(const viewDef_t *viewDef) {
     // TODO: Do we want this?
     //RB_ShowOverdraw();
 
-    // render the scene, jumping to the hardware specific interaction renderers
-    RB_STD_DrawView();
+    // render the scene
+    GL_PROFILE( "DrawView" );
+
+    drawSurf_t	 **drawSurfs;
+    int			numDrawSurfs, processed;
+
+    backEnd.depthFunc = GLS_DEPTHFUNC_EQUAL;
+
+    drawSurfs = ( drawSurf_t ** )&viewDef->drawSurfs[0];
+    numDrawSurfs = viewDef->numDrawSurfs;
+
+    // clear the z buffer, set the projection matrix, etc
+    RB_BeginDrawingView();
+    GL_CheckErrors();
+
+    backEnd.lightScale = r_lightScale.GetFloat();
+    if ( r_fboSRGB && !backEnd.viewDef->IsLightGem() )
+        backEnd.lightScale /= 2;
+    backEnd.overBright = 1.0f;
+
+    if ( backEnd.viewDef->viewEntitys ) {
+        // fill the depth buffer and clear color buffer to black except on subviews
+        void RB_STD_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs );
+        RB_STD_FillDepthBuffer( drawSurfs, numDrawSurfs );
+        RB_GLSL_DrawInteractions();
+    }
+
+    // now draw any non-light dependent shading passes
+    int RB_STD_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs );
+    processed = RB_STD_DrawShaderPasses( drawSurfs, numDrawSurfs );
+
+    // fog and blend lights
+    void RB_STD_FogAllLights( bool translucent );
+    RB_STD_FogAllLights( false );
+
+    // refresh fog and blend status
+    backEnd.afterFogRendered = true;
+
+    // now draw any post-processing effects using _currentRender
+    if ( processed < numDrawSurfs ) {
+        RB_STD_DrawShaderPasses( drawSurfs + processed, numDrawSurfs - processed );
+    }
+
+    RB_STD_FogAllLights( true ); // 2.08: second fog pass, translucent only
+
+    RB_RenderDebugTools( drawSurfs, numDrawSurfs );
 }

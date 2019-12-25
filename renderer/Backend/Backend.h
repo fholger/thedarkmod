@@ -15,6 +15,9 @@
 
 #pragma once
 
+#include <renderer/tr_local.h>
+#include "DepthStage.h"
+
 extern idCVar r_newBackend;
 
 class Backend {
@@ -27,6 +30,8 @@ public:
 	void ExecuteRenderCommands(const emptyCommand_t *cmds);
 
 private:
+    DepthStage depthStage;
+
 	void DrawView(const viewDef_t *viewDef);
 };
 
