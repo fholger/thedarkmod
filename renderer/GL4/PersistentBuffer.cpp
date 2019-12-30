@@ -13,15 +13,15 @@
  
 ******************************************************************************/
 #include "precompiled.h"
-#include "ParameterBufferObject.h"
+#include "PersistentBuffer.h"
 
-ParameterBufferObject::ParameterBufferObject(): mBufferObject(0 ), mTarget(0 ), mSize(0 ), mAlign(0 ), mMapBase(nullptr ), mCurrentOffset(0 ), mLastLocked(0 ) {}
+PersistentBuffer::PersistentBuffer(): mBufferObject(0 ), mTarget(0 ), mSize(0 ), mAlign(0 ), mMapBase(nullptr ), mCurrentOffset(0 ), mLastLocked(0 ) {}
 
-ParameterBufferObject::~ParameterBufferObject() {
+PersistentBuffer::~PersistentBuffer() {
 	Destroy();
 }
 
-void ParameterBufferObject::Init(GLenum target, GLuint size, GLuint alignment ) {
+void PersistentBuffer::Init(GLenum target, GLuint size, GLuint alignment ) {
 	if( mMapBase ) {
 		Destroy();
 	}
@@ -37,7 +37,7 @@ void ParameterBufferObject::Init(GLenum target, GLuint size, GLuint alignment ) 
 	mLastLocked = 0;
 }
 
-void ParameterBufferObject::Destroy() {
+void PersistentBuffer::Destroy() {
 	if( !mBufferObject ) {
 		return;
 	}
@@ -49,7 +49,7 @@ void ParameterBufferObject::Destroy() {
 	mMapBase = nullptr;
 }
 
-byte *ParameterBufferObject::Reserve(GLuint size ) {
+byte *PersistentBuffer::Reserve(GLuint size ) {
 	GLuint requestedSize = ALIGN( size, mAlign );
 	if( requestedSize > mSize ) {
 		return nullptr;
@@ -67,37 +67,37 @@ byte *ParameterBufferObject::Reserve(GLuint size ) {
 	return mMapBase + mCurrentOffset;
 }
 
-void ParameterBufferObject::MarkAsUsed(GLuint size ) {
+void PersistentBuffer::MarkAsUsed(GLuint size ) {
 	GLuint requestedSize = ALIGN( size, mAlign );
 	//LockRange( mCurrentOffset, requestedSize );
 	mCurrentOffset += requestedSize;
 }
 
-void ParameterBufferObject::Lock() {
+void PersistentBuffer::Lock() {
 	LockRange( mLastLocked, mCurrentOffset - mLastLocked );
 	mLastLocked = mCurrentOffset;
 }
 
-void ParameterBufferObject::BindBuffer() {
+void PersistentBuffer::BindBuffer() {
 	qglBindBuffer( mTarget, mBufferObject );
 }
 
-void ParameterBufferObject::BindBufferRange(GLuint index, GLuint size ) {
+void PersistentBuffer::BindBufferRange(GLuint index, GLuint size ) {
 	GLuint requestedSize = ALIGN( size, mAlign );
 	qglBindBufferRange( mTarget, index, mBufferObject, mCurrentOffset, requestedSize );
 }
 
-void ParameterBufferObject::BindBufferBase(GLuint index ) {
+void PersistentBuffer::BindBufferBase(GLuint index ) {
 	qglBindBufferBase( mTarget, index, mBufferObject );
 }
 
-void ParameterBufferObject::LockRange(GLuint offset, GLuint count ) {
+void PersistentBuffer::LockRange(GLuint offset, GLuint count ) {
 	GLsync fence = qglFenceSync( GL_SYNC_GPU_COMMANDS_COMPLETE, 0 );
 	LockedRange range = { offset, count, fence };
 	mRangeLocks.push_back( range );
 }
 
-void ParameterBufferObject::WaitForLockedRange(GLuint offset, GLuint count ) {
+void PersistentBuffer::WaitForLockedRange(GLuint offset, GLuint count ) {
 	LockedRange waitRange = { offset, count, 0 };
 	for( auto it = mRangeLocks.begin(); it != mRangeLocks.end(); ) {
 		if( waitRange.Overlaps( *it ) ) {
@@ -109,7 +109,7 @@ void ParameterBufferObject::WaitForLockedRange(GLuint offset, GLuint count ) {
 	}
 }
 
-void ParameterBufferObject::Wait(LockedRange &range ) {
+void PersistentBuffer::Wait(LockedRange &range ) {
 	GLenum result = qglClientWaitSync( range.fenceSync, 0, 0 );
 	while( result != GL_ALREADY_SIGNALED && result != GL_CONDITION_SATISFIED ) {
 		result = qglClientWaitSync( range.fenceSync, GL_SYNC_FLUSH_COMMANDS_BIT, 1000000 );

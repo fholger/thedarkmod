@@ -18,11 +18,11 @@
 #include <renderer/tr_local.h>
 #include "DepthStage.h"
 
-extern idCVar r_newBackend;
+extern idCVar r_useGL4Backend;
 
-class Backend {
+class GL4Backend {
 public:
-	Backend();
+	GL4Backend();
 
 	void Init();
 	void Shutdown();
@@ -35,4 +35,4 @@ private:
 	void DrawView(const viewDef_t *viewDef);
 };
 
-extern Backend *backend;
+extern GL4Backend *gl4Backend;

@@ -12,7 +12,7 @@
  Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
-#include <renderer/Backend/Backend.h>
+#include <renderer/Backend/GL4Backend.h>
 #include "precompiled.h"
 #pragma hdrstop
 
@@ -134,8 +134,8 @@ void R_IssueRenderCommands( frameData_t *frameData ) {
 	// r_skipRender is usually more usefull, because it will still
 	// draw 2D graphics
 	if ( !r_skipBackEnd.GetBool() ) {
-		if ( r_newBackend.GetBool() ) {
-			backend->ExecuteRenderCommands( cmds );
+		if ( r_useGL4Backend.GetBool() ) {
+			gl4Backend->ExecuteRenderCommands(cmds );
 		} else {
 			RB_ExecuteBackEndCommands( cmds );
 		}

@@ -13,28 +13,28 @@
  
 ******************************************************************************/
 #include "precompiled.h"
-#include "Backend.h"
+#include "GL4Backend.h"
 #include <renderer/FrameBuffer.h>
 #include <renderer/Profiling.h>
 
-Backend backendImpl;
-Backend *backend = &backendImpl;
+GL4Backend backendImpl;
+GL4Backend *gl4Backend = &backendImpl;
 
-idCVar r_newBackend( "r_newBackend", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "Use the experimental new render backend" );
+idCVar r_useGL4Backend("r_useGL4Backend", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "Use the experimental new GL4 render backend" );
 
-Backend::Backend() {
+GL4Backend::GL4Backend() {
 
 }
 
-void Backend::Init() {
+void GL4Backend::Init() {
     depthStage.Init();
 }
 
-void Backend::Shutdown() {
+void GL4Backend::Shutdown() {
     depthStage.Shutdown();
 }
 
-void Backend::ExecuteRenderCommands(const emptyCommand_t *cmds) {
+void GL4Backend::ExecuteRenderCommands(const emptyCommand_t *cmds) {
     if ( cmds->commandId == RC_NOP && !cmds->next ) {
         return;
     }
@@ -96,7 +96,7 @@ void Backend::ExecuteRenderCommands(const emptyCommand_t *cmds) {
     backEnd.glState.tmu[0].current2DMap = -1;
 }
 
-void Backend::DrawView(const viewDef_t *viewDef) {
+void GL4Backend::DrawView(const viewDef_t *viewDef) {
     // TODO: needed for compatibility with existing code
     backEnd.viewDef = viewDef;
 
