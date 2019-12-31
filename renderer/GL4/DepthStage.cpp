@@ -14,11 +14,14 @@
 ******************************************************************************/
 #include "precompiled.h"
 #include "DepthStage.h"
+#include <renderer/GLSLProgramManager.h>
 
 void DepthStage::Init() {
-
+    depthShader = programManager->Find("GL4Depth");
+    if (depthShader == nullptr) {
+        depthShader = programManager->LoadFromFiles("GL4Depth", "gl4/depth.vert.glsl", "gl4/depth.frag.glsl");
+    }
 }
 
 void DepthStage::Shutdown() {
-
 }

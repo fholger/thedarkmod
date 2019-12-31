@@ -397,6 +397,8 @@ void R_InitOpenGL( void ) {
 	// Reset our gamma
 	R_SetColorMappings();
 
+	gl4Backend->Init();
+
 #ifdef _WIN32
 	static bool glCheck = false;
 	if ( !glCheck && win32.osversion.dwMajorVersion >= 6 ) {
@@ -1535,6 +1537,7 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 
 	// sound and input are tied to the window we are about to destroy
 	if ( full ) {
+	    gl4Backend->Shutdown();
 		// free all of our texture numbers
 		soundSystem->ShutdownHW();
 		Sys_ShutdownInput();
@@ -1787,8 +1790,6 @@ void idRenderSystemLocal::Init( void ) {
 
 	renderModelManager->Init();
 
-	gl4Backend->Init();
-
 	// set the identity space
 	identitySpace.modelMatrix[0 * 4 + 0] = 1.0f;
 	identitySpace.modelMatrix[1 * 4 + 1] = 1.0f;
@@ -1889,6 +1890,7 @@ idRenderSystemLocal::ShutdownOpenGL
 ========================
 */
 void idRenderSystemLocal::ShutdownOpenGL( void ) {
+    gl4Backend->Shutdown();
 	// free the context and close the window
 	R_ShutdownFrameData();
 	GLimp_Shutdown();

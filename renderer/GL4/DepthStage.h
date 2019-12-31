@@ -22,4 +22,7 @@ public:
     void Init();
     void Shutdown();
 
+private:
+    GLSLProgram *depthShader;
+
 };
