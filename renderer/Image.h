@@ -239,6 +239,15 @@ public:
 	int					refCount;				// overall ref count
 
 	imageLoad_t			backgroundLoad;
+
+	// START bindless texture support
+	GLuint64 textureHandle;
+	bool isResident;
+	int lastNeededInFrame;
+
+	void MakeResident();
+	void MakeNonResident();
+	// END bindless texture support
 };
 
 ID_INLINE idImage::idImage() {
@@ -265,6 +274,7 @@ ID_INLINE idImage::idImage() {
 	refCount = 0;
 	swizzleMask = NULL;
 	memset( &backgroundLoad, 0, sizeof( backgroundLoad ) );
+	isResident = false;
 }
 
 
@@ -406,6 +416,8 @@ public:
 	float				textureLODBias;
 
 	idImage *			imageHashTable[FILE_HASH_SIZE];
+
+	void                MakeUnusedImagesNonResident();
 };
 
 extern idImageManager	*globalImages;		// pointer to global list for the rest of the system

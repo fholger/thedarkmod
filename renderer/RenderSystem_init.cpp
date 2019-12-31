@@ -14,7 +14,7 @@
 ******************************************************************************/
 
 #include "precompiled.h"
-#include <renderer/Backend/GL4Backend.h>
+#include <renderer/GL4/GL4Backend.h>
 #pragma hdrstop
 
 #include "tr_local.h"

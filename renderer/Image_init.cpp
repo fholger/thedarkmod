@@ -17,6 +17,8 @@
 #pragma hdrstop
 
 #include "tr_local.h"
+#include "Image.h"
+
 
 #define	DEFAULT_SIZE		16
 #define	NORMAL_MAP_SIZE		32
@@ -1826,4 +1828,14 @@ void idImageManager::PrintMemInfo( MemInfo_t *mi ) {
 
 	f->Printf( "\nTotal image bytes allocated: %s\n", idStr::FormatNumber( total ).c_str() );
 	fileSystem->CloseFile( f );
+}
+
+void idImageManager::MakeUnusedImagesNonResident() {
+    // if textures haven't been used in a frame for a while, they should be removed from residency,
+    // so that they can be evicted from GPU memory if necessary
+    for (idImage *image : images) {
+        if (image->lastNeededInFrame + 250 < backEnd.frameCount) {
+            image->MakeNonResident();
+        }
+    }
 }

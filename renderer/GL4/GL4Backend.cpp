@@ -16,22 +16,56 @@
 #include "GL4Backend.h"
 #include <renderer/FrameBuffer.h>
 #include <renderer/Profiling.h>
+#include <renderer/glad.h>
+
+const int MAX_DRAW_COMMANDS = 8192;
+const int MAX_PARAM_BLOCK_SIZE = 256;
+const int BUFFER_FRAMES = 3;  // number of frames our parameter buffer should be able to hold
 
 GL4Backend backendImpl;
 GL4Backend *gl4Backend = &backendImpl;
 
 idCVar r_useGL4Backend("r_useGL4Backend", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "Use the experimental new GL4 render backend" );
 
-GL4Backend::GL4Backend() {
-
+GL4Backend::GL4Backend()
+: ssboOffsetAlignment(0)
+, drawIdBuffer(0)
+, drawCommands(nullptr)
+{
 }
 
 void GL4Backend::Init() {
+    drawCommands = (DrawElementsIndirectCommand*) Mem_Alloc16(sizeof(DrawElementsIndirectCommand) * MAX_DRAW_COMMANDS);
+    InitDrawIdBuffer();
+    // we use SSBOs for shader parameter blocks.
+    // theoretically, UBOs would be faster, but their limited size and awkward alignment complicate
+    // our multidraw setups, and due to caching the practical difference is probably not worth it...
+    qglGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &ssboOffsetAlignment);
+    shaderParamBuffer.Init(GL_SHADER_STORAGE_BUFFER, MAX_DRAW_COMMANDS * MAX_PARAM_BLOCK_SIZE * BUFFER_FRAMES, ssboOffsetAlignment);
     depthStage.Init();
 }
 
 void GL4Backend::Shutdown() {
     depthStage.Shutdown();
+    shaderParamBuffer.Destroy();
+    qglDeleteBuffers(1, &drawIdBuffer);
+    Mem_Free16(drawCommands);
+}
+
+void GL4Backend::InitDrawIdBuffer() {
+    qglGenBuffers(1, &drawIdBuffer);
+    std::vector<uint32_t> drawIds (MAX_DRAW_COMMANDS);
+    for (uint32_t i = 0; i < MAX_DRAW_COMMANDS; ++i) {
+        drawIds[i] = i;
+    }
+    qglNamedBufferStorage(drawIdBuffer, drawIds.size() * sizeof(uint32_t), drawIds.data(), 0);
+}
+
+void GL4Backend::BeginFrame() {
+}
+
+void GL4Backend::EndFrame() {
+    globalImages->MakeUnusedImagesNonResident();
 }
 
 void GL4Backend::ExecuteRenderCommands(const emptyCommand_t *cmds) {
@@ -97,6 +131,8 @@ void GL4Backend::ExecuteRenderCommands(const emptyCommand_t *cmds) {
 }
 
 void GL4Backend::DrawView(const viewDef_t *viewDef) {
+    BeginFrame();
+
     // TODO: needed for compatibility with existing code
     backEnd.viewDef = viewDef;
 
@@ -166,4 +202,6 @@ void GL4Backend::DrawView(const viewDef_t *viewDef) {
     RB_STD_FogAllLights( true ); // 2.08: second fog pass, translucent only
 
     RB_RenderDebugTools( drawSurfs, numDrawSurfs );
+
+    EndFrame();
 }

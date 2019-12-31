@@ -17,8 +17,18 @@
 
 #include <renderer/tr_local.h>
 #include "DepthStage.h"
+#include "PersistentBuffer.h"
 
 extern idCVar r_useGL4Backend;
+
+// struct used for MultiDraw calls
+struct DrawElementsIndirectCommand {
+    uint count;
+    uint instanceCount;
+    uint firstIndex;
+    uint baseVertex;
+    uint baseInstance;
+};
 
 class GL4Backend {
 public:
@@ -27,11 +37,20 @@ public:
 	void Init();
 	void Shutdown();
 
+	void BeginFrame();
+	void EndFrame();
+
 	void ExecuteRenderCommands(const emptyCommand_t *cmds);
 
 private:
+    GLint ssboOffsetAlignment;
+    GLuint drawIdBuffer;
+    PersistentBuffer shaderParamBuffer;
+    DrawElementsIndirectCommand *drawCommands;
+
     DepthStage depthStage;
 
+    void InitDrawIdBuffer();
 	void DrawView(const viewDef_t *viewDef);
 };
 
