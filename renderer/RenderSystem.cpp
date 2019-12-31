@@ -12,7 +12,7 @@
  Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
-#include <renderer/Backend/GL4Backend.h>
+#include <renderer/GL4/GL4Backend.h>
 #include "precompiled.h"
 #pragma hdrstop
 

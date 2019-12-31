@@ -16,22 +16,82 @@
 #include "GL4Backend.h"
 #include <renderer/FrameBuffer.h>
 #include <renderer/Profiling.h>
+#include <renderer/glad.h>
+
+const int MAX_DRAW_COMMANDS = 8192;
+const int MAX_PARAM_BLOCK_SIZE = 256;
+const int BUFFER_FRAMES = 3;  // number of frames our parameter buffer should be able to hold
 
 GL4Backend backendImpl;
 GL4Backend *gl4Backend = &backendImpl;
 
 idCVar r_useGL4Backend("r_useGL4Backend", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "Use the experimental new GL4 render backend" );
 
-GL4Backend::GL4Backend() {
+struct SharedShaderParams {
+    idMat4 viewMatrix;
+    idMat4 projectionMatrix;
+    idMat4 viewProjectionMatrix;
+};
 
+GL4Backend::GL4Backend()
+: uboOffsetAlignment(0)
+, ssboOffsetAlignment(0)
+, drawIdBuffer(0)
+, drawCommands(nullptr)
+{
+}
+
+int gcd(int a, int b) {
+    while (a != b) {
+        if (a > b) {
+            a -= b;
+        } else {
+            b -= a;
+        }
+    }
+    return a;
+}
+
+int lcm(int a, int  b) {
+    return a / gcd(a, b) * b;
 }
 
 void GL4Backend::Init() {
+    drawCommands = (DrawElementsIndirectCommand*) Mem_Alloc16(sizeof(DrawElementsIndirectCommand) * MAX_DRAW_COMMANDS);
+    InitDrawIdBuffer();
+    qglGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uboOffsetAlignment);
+    qglGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &ssboOffsetAlignment);
+    int bufferAlignment = lcm(uboOffsetAlignment, ssboOffsetAlignment);
+    shaderParamBuffer.Init(MAX_DRAW_COMMANDS * MAX_PARAM_BLOCK_SIZE * BUFFER_FRAMES, bufferAlignment);
     depthStage.Init();
 }
 
 void GL4Backend::Shutdown() {
     depthStage.Shutdown();
+    shaderParamBuffer.Destroy();
+    qglDeleteBuffers(1, &drawIdBuffer);
+    Mem_Free16(drawCommands);
+}
+
+void GL4Backend::InitDrawIdBuffer() {
+    qglGenBuffers(1, &drawIdBuffer);
+    std::vector<uint32_t> drawIds (MAX_DRAW_COMMANDS);
+    for (uint32_t i = 0; i < MAX_DRAW_COMMANDS; ++i) {
+        drawIds[i] = i;
+    }
+    qglNamedBufferStorage(drawIdBuffer, drawIds.size() * sizeof(uint32_t), drawIds.data(), 0);
+}
+
+void GL4Backend::BeginFrame(const viewDef_t *viewDef) {
+    SharedShaderParams *sharedParams = shaderParamBuffer.AllocateAndBind<SharedShaderParams>(1, GL_UNIFORM_BUFFER, 7);
+    memcpy(sharedParams->projectionMatrix.ToFloatPtr(), viewDef->projectionMatrix, sizeof(idMat4));
+    memcpy(sharedParams->viewMatrix.ToFloatPtr(), viewDef->worldSpace.modelViewMatrix, sizeof(idMat4));
+    sharedParams->viewProjectionMatrix = sharedParams->projectionMatrix * sharedParams->viewMatrix;
+}
+
+void GL4Backend::EndFrame() {
+    shaderParamBuffer.Lock();
+    globalImages->MakeUnusedImagesNonResident();
 }
 
 void GL4Backend::ExecuteRenderCommands(const emptyCommand_t *cmds) {
@@ -97,6 +157,8 @@ void GL4Backend::ExecuteRenderCommands(const emptyCommand_t *cmds) {
 }
 
 void GL4Backend::DrawView(const viewDef_t *viewDef) {
+    BeginFrame(viewDef);
+
     // TODO: needed for compatibility with existing code
     backEnd.viewDef = viewDef;
 
@@ -166,4 +228,6 @@ void GL4Backend::DrawView(const viewDef_t *viewDef) {
     RB_STD_FogAllLights( true ); // 2.08: second fog pass, translucent only
 
     RB_RenderDebugTools( drawSurfs, numDrawSurfs );
+
+    EndFrame();
 }

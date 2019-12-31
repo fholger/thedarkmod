@@ -29,6 +29,8 @@
 #define GL_KHR_debug							1	//core since 4.3
 #define GL_ARB_stencil_texturing				1	//core since 4.3
 #define GL_ARB_buffer_storage					1	//single VBO, core since 4.4
+#define GL_ARB_direct_state_access              1   //core since 4.5
+#define GL_ARB_bindless_texture                 1
 #include "glad.h"
 
 #ifdef _WIN32

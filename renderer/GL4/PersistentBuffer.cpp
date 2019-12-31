@@ -15,24 +15,22 @@
 #include "precompiled.h"
 #include "PersistentBuffer.h"
 
-PersistentBuffer::PersistentBuffer(): mBufferObject(0 ), mTarget(0 ), mSize(0 ), mAlign(0 ), mMapBase(nullptr ), mCurrentOffset(0 ), mLastLocked(0 ) {}
+PersistentBuffer::PersistentBuffer(): mBufferObject(0 ), mSize(0 ), mAlign(0 ), mMapBase(nullptr ), mCurrentOffset(0 ), mLastLocked(0 ) {}
 
 PersistentBuffer::~PersistentBuffer() {
 	Destroy();
 }
 
-void PersistentBuffer::Init(GLenum target, GLuint size, GLuint alignment ) {
+void PersistentBuffer::Init(GLuint size, GLuint alignment ) {
 	if( mMapBase ) {
 		Destroy();
 	}
 
-	mTarget = target;
 	mSize = ALIGN( size, alignment );
 	mAlign = alignment;
 	qglGenBuffers( 1, &mBufferObject );
-	qglBindBuffer( mTarget, mBufferObject );
-	qglBufferStorage( mTarget, mSize, nullptr, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT );
-	mMapBase = ( byte* )qglMapBufferRange( mTarget, 0, mSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT );
+	qglNamedBufferStorage( mBufferObject, mSize, nullptr, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT );
+	mMapBase = ( byte* )qglMapNamedBufferRange( mBufferObject, 0, mSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT );
 	mCurrentOffset = 0;
 	mLastLocked = 0;
 }
@@ -42,8 +40,7 @@ void PersistentBuffer::Destroy() {
 		return;
 	}
 
-	qglBindBuffer( mTarget, mBufferObject );
-	qglUnmapBuffer( mTarget );
+	qglUnmapNamedBuffer( mBufferObject );
 	qglDeleteBuffers( 1, &mBufferObject );
 	mBufferObject = 0;
 	mMapBase = nullptr;
@@ -69,7 +66,6 @@ byte *PersistentBuffer::Reserve(GLuint size ) {
 
 void PersistentBuffer::MarkAsUsed(GLuint size ) {
 	GLuint requestedSize = ALIGN( size, mAlign );
-	//LockRange( mCurrentOffset, requestedSize );
 	mCurrentOffset += requestedSize;
 }
 
@@ -78,17 +74,9 @@ void PersistentBuffer::Lock() {
 	mLastLocked = mCurrentOffset;
 }
 
-void PersistentBuffer::BindBuffer() {
-	qglBindBuffer( mTarget, mBufferObject );
-}
-
-void PersistentBuffer::BindBufferRange(GLuint index, GLuint size ) {
+void PersistentBuffer::BindBufferRange(GLenum target, GLuint index, GLuint size ) {
 	GLuint requestedSize = ALIGN( size, mAlign );
-	qglBindBufferRange( mTarget, index, mBufferObject, mCurrentOffset, requestedSize );
-}
-
-void PersistentBuffer::BindBufferBase(GLuint index ) {
-	qglBindBufferBase( mTarget, index, mBufferObject );
+	qglBindBufferRange( target, index, mBufferObject, mCurrentOffset, requestedSize );
 }
 
 void PersistentBuffer::LockRange(GLuint offset, GLuint count ) {

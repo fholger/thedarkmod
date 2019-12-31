@@ -18,6 +18,8 @@
 
 #include "tr_local.h"
 #include "FrameBuffer.h"
+#include "Image.h"
+
 #include <thread>
 #include <mutex>          // std::mutex, std::unique_lock, std::defer_lock
 #include <condition_variable>
@@ -1404,6 +1406,7 @@ void idImage::PurgeImage( bool purgeCpuData ) {
 	if ( texnum != TEXTURE_NOT_LOADED ) {
 		// sometimes is NULL when exiting with an error
 		if ( qglDeleteTextures ) {
+            MakeNonResident();
 			qglDeleteTextures( 1, &texnum );	// this should be the ONLY place it is ever called!
 		}
 		texnum = static_cast< GLuint >( TEXTURE_NOT_LOADED );
@@ -1745,4 +1748,20 @@ void idImage::Print() const {
 		storSize /= 1024;
 	}
 	common->Printf( " %s\n", imgName.c_str() );
+}
+
+void idImage::MakeResident() {
+    if (!isResident) {
+        textureHandle = qglGetTextureHandleARB(texnum);
+        qglMakeTextureHandleResidentARB(textureHandle);
+        isResident = true;
+    }
+    lastNeededInFrame = backEnd.frameCount;
+}
+
+void idImage::MakeNonResident() {
+    if (isResident) {
+        qglMakeTextureHandleNonResidentARB(textureHandle);
+        isResident = false;
+    }
 }
