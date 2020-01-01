@@ -21,22 +21,19 @@ public:
 	PersistentBuffer();
 	~PersistentBuffer();
 
-	void Init( GLenum target, GLuint size, GLuint alignment = 32 );
+	void Init( GLuint size, GLuint alignment = 32 );
 	void Destroy();
 
 	byte *Reserve( GLuint size );
 	void MarkAsUsed( GLuint size );
 	void Lock();
 
-	void BindBuffer();
-
-	void BindBufferRange( GLuint index, GLuint size );
-	void BindBufferBase( GLuint index );
+	void BindBufferRange( GLenum target, GLuint index, GLuint size );
 
 	void* GetOffset() const { return ( void* )( mCurrentOffset ); }
 
 	template<typename T>
-	T *AllocateAndBind( GLuint count, GLuint index ) {
+	T *AllocateAndBind( GLuint count, GLenum target, GLuint index ) {
         static_assert(sizeof(T) <= 256, "Used type must not exceed 256 bytes of data");
         GLuint size = count * sizeof(T);
 	    byte *rawPointer = Reserve(size);
@@ -57,7 +54,6 @@ private:
 	};
 
 	GLuint mBufferObject;
-	GLenum mTarget;
 	GLuint mSize;
 	GLuint mAlign;
 	byte * mMapBase;

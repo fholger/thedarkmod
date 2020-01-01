@@ -46,8 +46,7 @@ private:
     GLint uboOffsetAlignment;
     GLint ssboOffsetAlignment;
     GLuint drawIdBuffer;
-    PersistentBuffer sharedParamBuffer;
-    PersistentBuffer drawParamBuffer;
+    PersistentBuffer shaderParamBuffer;
     DrawElementsIndirectCommand *drawCommands;
 
     DepthStage depthStage;

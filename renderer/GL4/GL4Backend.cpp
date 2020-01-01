@@ -41,22 +41,34 @@ GL4Backend::GL4Backend()
 {
 }
 
+int gcd(int a, int b) {
+    while (a != b) {
+        if (a > b) {
+            a -= b;
+        } else {
+            b -= a;
+        }
+    }
+    return a;
+}
+
+int lcm(int a, int  b) {
+    return a / gcd(a, b) * b;
+}
+
 void GL4Backend::Init() {
     drawCommands = (DrawElementsIndirectCommand*) Mem_Alloc16(sizeof(DrawElementsIndirectCommand) * MAX_DRAW_COMMANDS);
     InitDrawIdBuffer();
     qglGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uboOffsetAlignment);
     qglGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &ssboOffsetAlignment);
-    sharedParamBuffer.Init(GL_UNIFORM_BUFFER, MAX_PARAM_BLOCK_SIZE * BUFFER_FRAMES, uboOffsetAlignment);
-    // we use SSBOs for shader parameter blocks.
-    // theoretically, UBOs would be faster, but their limited size and awkward alignment complicate
-    // our multidraw setups, and due to caching the practical difference is probably not worth it...
-    drawParamBuffer.Init(GL_SHADER_STORAGE_BUFFER, MAX_DRAW_COMMANDS * MAX_PARAM_BLOCK_SIZE * BUFFER_FRAMES, ssboOffsetAlignment);
+    int bufferAlignment = lcm(uboOffsetAlignment, ssboOffsetAlignment);
+    shaderParamBuffer.Init(MAX_DRAW_COMMANDS * MAX_PARAM_BLOCK_SIZE * BUFFER_FRAMES, bufferAlignment);
     depthStage.Init();
 }
 
 void GL4Backend::Shutdown() {
     depthStage.Shutdown();
-    drawParamBuffer.Destroy();
+    shaderParamBuffer.Destroy();
     qglDeleteBuffers(1, &drawIdBuffer);
     Mem_Free16(drawCommands);
 }
@@ -71,15 +83,14 @@ void GL4Backend::InitDrawIdBuffer() {
 }
 
 void GL4Backend::BeginFrame(const viewDef_t *viewDef) {
-    SharedShaderParams *sharedParams = sharedParamBuffer.AllocateAndBind<SharedShaderParams>(1, 7);
+    SharedShaderParams *sharedParams = shaderParamBuffer.AllocateAndBind<SharedShaderParams>(1, GL_UNIFORM_BUFFER, 7);
     memcpy(sharedParams->projectionMatrix.ToFloatPtr(), viewDef->projectionMatrix, sizeof(idMat4));
     memcpy(sharedParams->viewMatrix.ToFloatPtr(), viewDef->worldSpace.modelViewMatrix, sizeof(idMat4));
     sharedParams->viewProjectionMatrix = sharedParams->projectionMatrix * sharedParams->viewMatrix;
 }
 
 void GL4Backend::EndFrame() {
-    sharedParamBuffer.Lock();
-    drawParamBuffer.Lock();
+    shaderParamBuffer.Lock();
     globalImages->MakeUnusedImagesNonResident();
 }
 

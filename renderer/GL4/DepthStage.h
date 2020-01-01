@@ -14,6 +14,7 @@
 ******************************************************************************/
 #pragma once
 
+#include <renderer/tr_local.h>
 #include "RenderStage.h"
 
 
@@ -21,6 +22,8 @@ class DepthStage : public RenderStage {
 public:
     void Init();
     void Shutdown();
+
+    void Draw(const viewDef_t *viewDef);
 
 private:
     GLSLProgram *depthShader;

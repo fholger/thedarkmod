@@ -15,6 +15,8 @@
 #include "precompiled.h"
 #include "DepthStage.h"
 #include <renderer/GLSLProgramManager.h>
+#include <renderer/GLSLProgram.h>
+#include <renderer/FrameBuffer.h>
 
 void DepthStage::Init() {
     depthShader = programManager->Find("GL4Depth");
@@ -24,4 +26,21 @@ void DepthStage::Init() {
 }
 
 void DepthStage::Shutdown() {
+}
+
+void DepthStage::Draw(const viewDef_t *viewDef) {
+    depthShader->Activate();
+    GL_State(GLS_DEPTHFUNC_LESS);
+
+    idPlane mirrorClipPlane (0, 0, 0, 1);
+    if (viewDef->numClipPlanes > 0) {
+        mirrorClipPlane = viewDef->clipPlanes[0];
+    }
+
+    // Make the early depth pass available to shaders. #3877
+    if ( !backEnd.viewDef->IsLightGem() && !r_skipDepthCapture.GetBool() ) {
+        FB_CopyDepthBuffer();
+        RB_SetProgramEnvironment();
+    }
+    GLSLProgram::Deactivate();
 }
