@@ -37,15 +37,17 @@ public:
 	void Init();
 	void Shutdown();
 
-	void BeginFrame();
+	void BeginFrame(const viewDef_t *viewDef);
 	void EndFrame();
 
 	void ExecuteRenderCommands(const emptyCommand_t *cmds);
 
 private:
+    GLint uboOffsetAlignment;
     GLint ssboOffsetAlignment;
     GLuint drawIdBuffer;
-    PersistentBuffer shaderParamBuffer;
+    PersistentBuffer sharedParamBuffer;
+    PersistentBuffer drawParamBuffer;
     DrawElementsIndirectCommand *drawCommands;
 
     DepthStage depthStage;

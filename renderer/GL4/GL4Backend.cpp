@@ -27,8 +27,15 @@ GL4Backend *gl4Backend = &backendImpl;
 
 idCVar r_useGL4Backend("r_useGL4Backend", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "Use the experimental new GL4 render backend" );
 
+struct SharedShaderParams {
+    idMat4 viewMatrix;
+    idMat4 projectionMatrix;
+    idMat4 viewProjectionMatrix;
+};
+
 GL4Backend::GL4Backend()
-: ssboOffsetAlignment(0)
+: uboOffsetAlignment(0)
+, ssboOffsetAlignment(0)
 , drawIdBuffer(0)
 , drawCommands(nullptr)
 {
@@ -37,17 +44,19 @@ GL4Backend::GL4Backend()
 void GL4Backend::Init() {
     drawCommands = (DrawElementsIndirectCommand*) Mem_Alloc16(sizeof(DrawElementsIndirectCommand) * MAX_DRAW_COMMANDS);
     InitDrawIdBuffer();
+    qglGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uboOffsetAlignment);
+    qglGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &ssboOffsetAlignment);
+    sharedParamBuffer.Init(GL_UNIFORM_BUFFER, MAX_PARAM_BLOCK_SIZE * BUFFER_FRAMES, uboOffsetAlignment);
     // we use SSBOs for shader parameter blocks.
     // theoretically, UBOs would be faster, but their limited size and awkward alignment complicate
     // our multidraw setups, and due to caching the practical difference is probably not worth it...
-    qglGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &ssboOffsetAlignment);
-    shaderParamBuffer.Init(GL_SHADER_STORAGE_BUFFER, MAX_DRAW_COMMANDS * MAX_PARAM_BLOCK_SIZE * BUFFER_FRAMES, ssboOffsetAlignment);
+    drawParamBuffer.Init(GL_SHADER_STORAGE_BUFFER, MAX_DRAW_COMMANDS * MAX_PARAM_BLOCK_SIZE * BUFFER_FRAMES, ssboOffsetAlignment);
     depthStage.Init();
 }
 
 void GL4Backend::Shutdown() {
     depthStage.Shutdown();
-    shaderParamBuffer.Destroy();
+    drawParamBuffer.Destroy();
     qglDeleteBuffers(1, &drawIdBuffer);
     Mem_Free16(drawCommands);
 }
@@ -61,10 +70,16 @@ void GL4Backend::InitDrawIdBuffer() {
     qglNamedBufferStorage(drawIdBuffer, drawIds.size() * sizeof(uint32_t), drawIds.data(), 0);
 }
 
-void GL4Backend::BeginFrame() {
+void GL4Backend::BeginFrame(const viewDef_t *viewDef) {
+    SharedShaderParams *sharedParams = sharedParamBuffer.AllocateAndBind<SharedShaderParams>(1, 7);
+    memcpy(sharedParams->projectionMatrix.ToFloatPtr(), viewDef->projectionMatrix, sizeof(idMat4));
+    memcpy(sharedParams->viewMatrix.ToFloatPtr(), viewDef->worldSpace.modelViewMatrix, sizeof(idMat4));
+    sharedParams->viewProjectionMatrix = sharedParams->projectionMatrix * sharedParams->viewMatrix;
 }
 
 void GL4Backend::EndFrame() {
+    sharedParamBuffer.Lock();
+    drawParamBuffer.Lock();
     globalImages->MakeUnusedImagesNonResident();
 }
 
@@ -131,7 +146,7 @@ void GL4Backend::ExecuteRenderCommands(const emptyCommand_t *cmds) {
 }
 
 void GL4Backend::DrawView(const viewDef_t *viewDef) {
-    BeginFrame();
+    BeginFrame(viewDef);
 
     // TODO: needed for compatibility with existing code
     backEnd.viewDef = viewDef;

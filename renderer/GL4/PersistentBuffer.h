@@ -35,6 +35,16 @@ public:
 
 	void* GetOffset() const { return ( void* )( mCurrentOffset ); }
 
+	template<typename T>
+	T *AllocateAndBind( GLuint count, GLuint index ) {
+        static_assert(sizeof(T) <= 256, "Used type must not exceed 256 bytes of data");
+        GLuint size = count * sizeof(T);
+	    byte *rawPointer = Reserve(size);
+	    BindBufferRange(index, size);
+	    MarkAsUsed(size);
+	    return reinterpret_cast<T*>(rawPointer);
+	}
+
 private:
 	struct LockedRange {
 		GLuint offset;

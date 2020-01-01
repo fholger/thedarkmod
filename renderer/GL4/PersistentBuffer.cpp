@@ -69,7 +69,6 @@ byte *PersistentBuffer::Reserve(GLuint size ) {
 
 void PersistentBuffer::MarkAsUsed(GLuint size ) {
 	GLuint requestedSize = ALIGN( size, mAlign );
-	//LockRange( mCurrentOffset, requestedSize );
 	mCurrentOffset += requestedSize;
 }
 
