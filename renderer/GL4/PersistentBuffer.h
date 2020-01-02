@@ -30,6 +30,8 @@ public:
 
 	void BindBufferRange( GLenum target, GLuint index, GLuint size );
 
+	void BindBuffer(GLenum target);
+
 	void* GetOffset() const { return ( void* )( mCurrentOffset ); }
 
 private:

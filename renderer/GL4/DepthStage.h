@@ -45,6 +45,6 @@ private:
 
     void CreateGenericDrawCommands(const drawSurf_t *surf);
 
-    void GenericDepthPass(const viewDef_t *viewDef, const std::vector<drawSurf_t*> &drawSurfs);
-    void FastDepthPass(const std::vector<drawSurf_t*> &drawSurfs);
+    void GenericDepthPass(const viewDef_t *viewDef, drawSurf_t **drawSurfs, int numDrawSurfs);
+    void FastDepthPass(drawSurf_t **drawSurfs, int numDrawSurfs);
 };

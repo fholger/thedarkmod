@@ -109,3 +109,7 @@ void PersistentBuffer::Wait(LockedRange &range ) {
 	}
 	qglDeleteSync( range.fenceSync );
 }
+
+void PersistentBuffer::BindBuffer(GLenum target) {
+    qglBindBuffer(target, mBufferObject);
+}

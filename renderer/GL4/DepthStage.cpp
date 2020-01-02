@@ -49,7 +49,9 @@ void DepthStage::Draw(const viewDef_t *viewDef) {
 
     qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertexCache.GetIndexBuffer());
 
-    std::vector<drawSurf_t*> subViewSurfs;
+    GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS );
+    GenericDepthPass(viewDef, viewDef->drawSurfs, viewDef->numDrawSurfs);
+    /*std::vector<drawSurf_t*> subViewSurfs;
     std::vector<drawSurf_t*> opaqueSurfs;
     std::vector<drawSurf_t*> perforatedSurfs;
     PartitionSurfaces(viewDef->drawSurfs, viewDef->numDrawSurfs, subViewSurfs, opaqueSurfs, perforatedSurfs);
@@ -64,7 +66,7 @@ void DepthStage::Draw(const viewDef_t *viewDef) {
     GenericDepthPass(viewDef, subViewSurfs);
     GL_State( GLS_DEPTHFUNC_LESS );
     FastDepthPass(opaqueSurfs);
-    GenericDepthPass(viewDef, perforatedSurfs);
+    GenericDepthPass(viewDef, perforatedSurfs);*/
 
     // Make the early depth pass available to shaders. #3877
     if ( !backEnd.viewDef->IsLightGem() && !r_skipDepthCapture.GetBool() ) {
@@ -227,7 +229,7 @@ bool DepthStage::ShouldDrawSurf(const drawSurf_t *surf) const {
     return stage != shader->GetNumStages();
 }
 
-void DepthStage::GenericDepthPass(const viewDef_t *viewDef, const std::vector<drawSurf_t*> &drawSurfs) {
+void DepthStage::GenericDepthPass(const viewDef_t *viewDef, drawSurf_t **drawSurfs, int numDrawSurfs) {
     GL_PROFILE("DepthPass_Generic");
 
     drawCommands = gl4Backend->GetDrawCommandBuffer();
@@ -242,16 +244,20 @@ void DepthStage::GenericDepthPass(const viewDef_t *viewDef, const std::vector<dr
     }
     qglUniform4fv(0, 1, mirrorClipPlane.ToFloatPtr());
 
-    for (drawSurf_t *surf : drawSurfs) {
+    for (int i = 0; i < numDrawSurfs; ++i) {
+        const drawSurf_t *surf = drawSurfs[i];
+        if (!ShouldDrawSurf(surf)) {
+            continue;
+        }
         // TODO: implement polygon offset in shader?
         CreateGenericDrawCommands(surf);
     }
 
     gl4Backend->BindShaderParams<GenericDepthShaderParams>(currentIndex, GL_SHADER_STORAGE_BUFFER, 0);
-    qglMultiDrawElementsIndirect(GL_TRIANGLES, GL_INDEX_TYPE, drawCommands, currentIndex, 0);
+    gl4Backend->MultiDrawIndirect(currentIndex);
 }
 
-void DepthStage::FastDepthPass(const std::vector<drawSurf_t *> &drawSurfs) {
+void DepthStage::FastDepthPass(drawSurf_t **drawSurfs, int numDrawSurfs) {
     GL_PROFILE("DepthPass_Fast");
 
     drawCommands = gl4Backend->GetDrawCommandBuffer();
@@ -260,7 +266,12 @@ void DepthStage::FastDepthPass(const std::vector<drawSurf_t *> &drawSurfs) {
 
     fastDepthShader->Activate();
 
-    for (drawSurf_t *surf : drawSurfs) {
+    for (int i = 0; i < numDrawSurfs; ++i) {
+        const drawSurf_t *surf = drawSurfs[i];
+        if (!ShouldDrawSurf(surf)) {
+            continue;
+        }
+
         int cmdIndex = currentIndex++;
         memcpy(modelViewMatrices[cmdIndex].ToFloatPtr(), surf->space->modelViewMatrix, sizeof(idMat4));
         drawCommands[cmdIndex].count = surf->numIndexes;
@@ -271,6 +282,6 @@ void DepthStage::FastDepthPass(const std::vector<drawSurf_t *> &drawSurfs) {
     }
 
     gl4Backend->BindShaderParams<idMat4>(currentIndex, GL_SHADER_STORAGE_BUFFER, 0);
-    qglMultiDrawElementsIndirect(GL_TRIANGLES, GL_INDEX_TYPE, drawCommands, currentIndex, 0);
+    gl4Backend->MultiDrawIndirect(currentIndex);
 }
 

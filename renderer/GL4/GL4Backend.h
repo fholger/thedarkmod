@@ -56,7 +56,11 @@ public:
 
 	void ExecuteRenderCommands(const emptyCommand_t *cmds);
 
-	DrawElementsIndirectCommand *GetDrawCommandBuffer() { return drawCommands; }
+	/** This function will always return the same buffer until you call MultiDrawIndirect */
+	DrawElementsIndirectCommand *GetDrawCommandBuffer() {
+	    byte *rawBuffer = drawCommandBuffer.Reserve(MAX_DRAW_COMMANDS * sizeof(DrawElementsIndirectCommand));
+	    return reinterpret_cast<DrawElementsIndirectCommand*>(rawBuffer);
+	}
 
 	/** This function will always return the same buffer until you actually bind the params with BindShaderParams */
 	template<typename T>
@@ -73,12 +77,14 @@ public:
 	    shaderParamBuffer.MarkAsUsed(count * sizeof(T));
 	}
 
+	void MultiDrawIndirect(int count);
+
 private:
     GLint uboOffsetAlignment;
     GLint ssboOffsetAlignment;
     GLuint drawIdBuffer;
     PersistentBuffer shaderParamBuffer;
-    DrawElementsIndirectCommand *drawCommands;
+    PersistentBuffer drawCommandBuffer;
 
     DepthStage depthStage;
 

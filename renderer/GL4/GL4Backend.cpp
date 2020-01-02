@@ -34,7 +34,6 @@ GL4Backend::GL4Backend()
 : uboOffsetAlignment(0)
 , ssboOffsetAlignment(0)
 , drawIdBuffer(0)
-, drawCommands(nullptr)
 {
 }
 
@@ -54,12 +53,12 @@ int lcm(int a, int  b) {
 }
 
 void GL4Backend::Init() {
-    drawCommands = (DrawElementsIndirectCommand*) Mem_Alloc16(sizeof(DrawElementsIndirectCommand) * MAX_DRAW_COMMANDS);
     InitDrawIdBuffer();
     qglGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uboOffsetAlignment);
     qglGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &ssboOffsetAlignment);
     int bufferAlignment = lcm(uboOffsetAlignment, ssboOffsetAlignment);
     shaderParamBuffer.Init(MAX_DRAW_COMMANDS * MAX_PARAM_BLOCK_SIZE * BUFFER_FRAMES, bufferAlignment);
+    drawCommandBuffer.Init(MAX_DRAW_COMMANDS * sizeof(DrawElementsIndirectCommand) * BUFFER_FRAMES, 16);
     depthStage.Init();
 
 	PrepareVertexAttribs();
@@ -67,9 +66,9 @@ void GL4Backend::Init() {
 
 void GL4Backend::Shutdown() {
     depthStage.Shutdown();
+    drawCommandBuffer.Destroy();
     shaderParamBuffer.Destroy();
     qglDeleteBuffers(1, &drawIdBuffer);
-    Mem_Free16(drawCommands);
 }
 
 void GL4Backend::InitDrawIdBuffer() {
@@ -126,6 +125,7 @@ void GL4Backend::BeginFrame(const viewDef_t *viewDef) {
 
 void GL4Backend::EndFrame() {
     shaderParamBuffer.Lock();
+    drawCommandBuffer.Lock();
 	globalImages->MakeUnusedImagesNonResident();
 }
 
@@ -264,4 +264,10 @@ void GL4Backend::DrawView(const viewDef_t *viewDef) {
     RB_RenderDebugTools( drawSurfs, numDrawSurfs );
 
     EndFrame();
+}
+
+void GL4Backend::MultiDrawIndirect(int count) {
+    drawCommandBuffer.BindBuffer(GL_DRAW_INDIRECT_BUFFER);
+    qglMultiDrawElementsIndirect(GL_TRIANGLES, GL_INDEX_TYPE, drawCommandBuffer.GetOffset(), count, 0);
+    drawCommandBuffer.MarkAsUsed(count * sizeof(DrawElementsIndirectCommand));
 }
