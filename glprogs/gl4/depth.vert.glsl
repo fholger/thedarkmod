@@ -1,4 +1,4 @@
-#version 460 core
+#version 450 core
 #extension GL_ARB_bindless_texture : require
 
 #pragma tdm_include "gl4/projection.glsl"
@@ -10,7 +10,7 @@ layout (location = 15) in int drawId;
 layout (location = 0) uniform vec4 clipPlane;
 
 struct ShaderParams {
-    mat4 modelMatrix;
+    mat4 modelViewMatrix;
     mat4 textureMatrix;
     vec4 color;
     vec4 alphaTest;
@@ -26,9 +26,9 @@ layout (location = 1) out float out_clipPlaneDist;
 layout (location = 2) out flat int out_drawId;
 
 void main() {
-    vec4 worldPos = params[gl_DrawID].modelMatrix * position;
-    gl_Position = viewProjectionMatrix * worldPos;
-    out_uv = (params[gl_DrawID].textureMatrix * vec4(texCoord, 0, 1)).st;
-    out_clipPlaneDist = dot(worldPos, clipPlane);
-    out_drawId = gl_DrawID;
+    vec4 viewPos = params[drawId].modelViewMatrix * position;
+    gl_Position = projectionMatrix * viewPos;
+    out_uv = (params[drawId].textureMatrix * vec4(texCoord, 0, 1)).st;
+    out_clipPlaneDist = dot(inverseViewMatrix * viewPos, clipPlane);
+    out_drawId = drawId;
 }

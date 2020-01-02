@@ -25,6 +25,7 @@ idCVar r_useGL4Backend("r_useGL4Backend", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_
 
 struct SharedShaderParams {
     idMat4 viewMatrix;
+    idMat4 inverseViewMatrix;
     idMat4 projectionMatrix;
     idMat4 viewProjectionMatrix;
 };
@@ -115,6 +116,7 @@ void GL4Backend::BeginFrame(const viewDef_t *viewDef) {
     SharedShaderParams *sharedParams = GetShaderParamBuffer<SharedShaderParams>();
     memcpy(sharedParams->projectionMatrix.ToFloatPtr(), viewDef->projectionMatrix, sizeof(idMat4));
     memcpy(sharedParams->viewMatrix.ToFloatPtr(), viewDef->worldSpace.modelViewMatrix, sizeof(idMat4));
+    sharedParams->inverseViewMatrix = sharedParams->viewMatrix.Inverse();
 	myGlMultMatrix(sharedParams->viewMatrix.ToFloatPtr(), sharedParams->projectionMatrix.ToFloatPtr(), sharedParams->viewProjectionMatrix.ToFloatPtr());
     BindShaderParams<SharedShaderParams>(1, GL_UNIFORM_BUFFER, 7);
 

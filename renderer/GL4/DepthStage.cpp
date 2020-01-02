@@ -21,7 +21,7 @@
 #include <renderer/Profiling.h>
 
 struct DepthShaderParams {
-    idMat4 modelMatrix;
+    idMat4 modelViewMatrix;
     idMat4 textureMatrix;
     idVec4 color;
     idVec4 alphaTest;
@@ -47,7 +47,7 @@ void DepthStage::Draw(const viewDef_t *viewDef) {
     currentIndex = 0;
 
     depthShader->Activate();
-    GL_State(GLS_DEPTHFUNC_LESS);
+    GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS );
 
     idPlane mirrorClipPlane (0, 0, 0, 1);
     if (viewDef->numClipPlanes > 0) {
@@ -66,7 +66,6 @@ void DepthStage::Draw(const viewDef_t *viewDef) {
     // Make the early depth pass available to shaders. #3877
     if ( !backEnd.viewDef->IsLightGem() && !r_skipDepthCapture.GetBool() ) {
         FB_CopyDepthBuffer();
-        RB_SetProgramEnvironment();
     }
     GLSLProgram::Deactivate();
 }
@@ -131,13 +130,13 @@ void DepthStage::PrepareDrawCommands(const drawSurf_t *surf) {
 }
 
 void DepthStage::FillDrawCommands( const drawSurf_t *surf ) {
-    idVec4 color (0, 0, 0, 1);
+    idVec4 color = colorBlack;
     const idMaterial *shader = surf->material;
     const float *regs = surf->shaderRegisters;
 
     // subviews will just down-modulate the color buffer by overbright
     if ( shader->GetSort() == SS_SUBVIEW ) {
-        GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS );
+        //GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS );
         color[0] = color[1] = color[2] = (1.0f / backEnd.overBright);
     }
 
@@ -177,7 +176,7 @@ void DepthStage::FillDrawCommands( const drawSurf_t *surf ) {
 
             int cmdIndex = currentIndex++;
             DepthShaderParams &params = shaderParams[cmdIndex];
-            memcpy(params.modelMatrix.ToFloatPtr(), surf->space->modelMatrix, sizeof(idMat4));
+            memcpy(params.modelViewMatrix.ToFloatPtr(), surf->space->modelViewMatrix, sizeof(idMat4));
             params.color = color;
             params.alphaTest.x = regs[pStage->alphaTestRegister];
             params.texture = pStage->texture.image->textureHandle;
@@ -203,7 +202,7 @@ void DepthStage::FillDrawCommands( const drawSurf_t *surf ) {
     if ( drawSolid ) {  // draw the entire surface solid
         int cmdIndex = currentIndex++;
         DepthShaderParams &params = shaderParams[cmdIndex];
-        memcpy(params.modelMatrix.ToFloatPtr(), surf->space->modelMatrix, sizeof(idMat4));
+        memcpy(params.modelViewMatrix.ToFloatPtr(), surf->space->modelViewMatrix, sizeof(idMat4));
         params.color = colorBlack;
         params.alphaTest.x = -1;
 

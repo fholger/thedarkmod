@@ -1,8 +1,8 @@
-#version 460 core
+#version 450 core
 #extension GL_ARB_bindless_texture : require
 
 struct ShaderParams {
-    mat4 modelMatrix;
+    mat4 modelViewMatrix;
     mat4 textureMatrix;
     vec4 color;
     vec4 alphaTest;
@@ -30,6 +30,4 @@ void main() {
             discard;
         fragColor = tex*params[drawId].color;
     }
-	
-	fragColor = vec4(1, 0, 0, 1);
 }
