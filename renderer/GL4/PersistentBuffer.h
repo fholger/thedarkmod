@@ -30,17 +30,9 @@ public:
 
 	void BindBufferRange( GLenum target, GLuint index, GLuint size );
 
-	void* GetOffset() const { return ( void* )( mCurrentOffset ); }
+	void BindBuffer(GLenum target);
 
-	template<typename T>
-	T *AllocateAndBind( GLuint count, GLenum target, GLuint index ) {
-        static_assert(sizeof(T) <= 256, "Used type must not exceed 256 bytes of data");
-        GLuint size = count * sizeof(T);
-	    byte *rawPointer = Reserve(size);
-	    BindBufferRange(index, size);
-	    MarkAsUsed(size);
-	    return reinterpret_cast<T*>(rawPointer);
-	}
+	void* GetOffset() const { return ( void* )( mCurrentOffset ); }
 
 private:
 	struct LockedRange {

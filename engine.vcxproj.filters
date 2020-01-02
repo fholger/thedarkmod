@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="CM">
@@ -132,6 +132,9 @@
     </Filter>
     <Filter Include="Tests">
       <UniqueIdentifier>{f2796430-f703-4cad-956a-d3aa24b66499}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer\GL4">
+      <UniqueIdentifier>{d450ba58-45c2-4339-866f-720ec41a2167}</UniqueIdentifier>
     </Filter>
     <Filter Include="Renderer\glad">
       <UniqueIdentifier>{47f98cf0-60e3-4fea-ab19-c4ac45ad6cc4}</UniqueIdentifier>
@@ -1242,6 +1245,18 @@
     </ClInclude>
     <ClInclude Include="framework\minizip\minizip_extra.h">
       <Filter>Framework\minizip</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\GL4\DepthStage.h">
+      <Filter>Renderer\GL4</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\GL4\GL4Backend.h">
+      <Filter>Renderer\GL4</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\GL4\PersistentBuffer.h">
+      <Filter>Renderer\GL4</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\GL4\RenderStage.h">
+      <Filter>Renderer\GL4</Filter>
     </ClInclude>
     <ClInclude Include="renderer\glad.h">
       <Filter>Renderer\glad</Filter>
@@ -2947,6 +2962,15 @@
     <ClCompile Include="framework\minizip\minizip_extra.c">
       <Filter>Framework\minizip</Filter>
     </ClCompile>
+    <ClCompile Include="renderer\GL4\DepthStage.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\GL4\GL4Backend.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\GL4\PersistentBuffer.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
     <ClCompile Include="renderer\qgl.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
@@ -2955,6 +2979,7 @@
     </ClCompile>
     <ClCompile Include="renderer\glad_wgl.c">
       <Filter>Renderer\glad</Filter>
+    </ClCompile>
     </ClCompile>
     <ClCompile Include="tools\compilers\compiler_common.cpp">
       <Filter>Tools\Compilers</Filter>

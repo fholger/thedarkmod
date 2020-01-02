@@ -14,13 +14,9 @@
 ******************************************************************************/
 #include "precompiled.h"
 #include "GL4Backend.h"
-#include <renderer/FrameBuffer.h>
-#include <renderer/Profiling.h>
-#include <renderer/glad.h>
-
-const int MAX_DRAW_COMMANDS = 8192;
-const int MAX_PARAM_BLOCK_SIZE = 256;
-const int BUFFER_FRAMES = 3;  // number of frames our parameter buffer should be able to hold
+#include "../FrameBuffer.h"
+#include "../Profiling.h"
+#include "../glad.h"
 
 GL4Backend backendImpl;
 GL4Backend *gl4Backend = &backendImpl;
@@ -29,6 +25,7 @@ idCVar r_useGL4Backend("r_useGL4Backend", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_
 
 struct SharedShaderParams {
     idMat4 viewMatrix;
+    idMat4 inverseViewMatrix;
     idMat4 projectionMatrix;
     idMat4 viewProjectionMatrix;
 };
@@ -37,7 +34,6 @@ GL4Backend::GL4Backend()
 : uboOffsetAlignment(0)
 , ssboOffsetAlignment(0)
 , drawIdBuffer(0)
-, drawCommands(nullptr)
 {
 }
 
@@ -57,24 +53,26 @@ int lcm(int a, int  b) {
 }
 
 void GL4Backend::Init() {
-    drawCommands = (DrawElementsIndirectCommand*) Mem_Alloc16(sizeof(DrawElementsIndirectCommand) * MAX_DRAW_COMMANDS);
     InitDrawIdBuffer();
     qglGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uboOffsetAlignment);
     qglGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &ssboOffsetAlignment);
     int bufferAlignment = lcm(uboOffsetAlignment, ssboOffsetAlignment);
     shaderParamBuffer.Init(MAX_DRAW_COMMANDS * MAX_PARAM_BLOCK_SIZE * BUFFER_FRAMES, bufferAlignment);
+    drawCommandBuffer.Init(MAX_DRAW_COMMANDS * sizeof(DrawElementsIndirectCommand) * BUFFER_FRAMES, 16);
     depthStage.Init();
+
+	PrepareVertexAttribs();
 }
 
 void GL4Backend::Shutdown() {
     depthStage.Shutdown();
+    drawCommandBuffer.Destroy();
     shaderParamBuffer.Destroy();
     qglDeleteBuffers(1, &drawIdBuffer);
-    Mem_Free16(drawCommands);
 }
 
 void GL4Backend::InitDrawIdBuffer() {
-    qglGenBuffers(1, &drawIdBuffer);
+    qglCreateBuffers(1, &drawIdBuffer);
     std::vector<uint32_t> drawIds (MAX_DRAW_COMMANDS);
     for (uint32_t i = 0; i < MAX_DRAW_COMMANDS; ++i) {
         drawIds[i] = i;
@@ -82,16 +80,53 @@ void GL4Backend::InitDrawIdBuffer() {
     qglNamedBufferStorage(drawIdBuffer, drawIds.size() * sizeof(uint32_t), drawIds.data(), 0);
 }
 
+void GL4Backend::PrepareVertexAttribs() {
+    qglVertexAttribFormat( VA_POSITION, 3, GL_FLOAT, GL_FALSE, offsetof( idDrawVert, xyz ) );
+    qglVertexAttribFormat( VA_TEXCOORD, 2, GL_FLOAT, GL_FALSE, offsetof( idDrawVert, st ) );
+    qglVertexAttribFormat( VA_NORMAL, 3, GL_FLOAT, GL_FALSE, offsetof( idDrawVert, normal ) );
+    qglVertexAttribFormat( VA_TANGENT, 3, GL_FLOAT, GL_FALSE, offsetof( idDrawVert, tangents[0] ) );
+    qglVertexAttribFormat( VA_BITANGENT, 3, GL_FLOAT, GL_FALSE, offsetof( idDrawVert, tangents[1] ) );
+    qglVertexAttribFormat( VA_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE, offsetof( idDrawVert, color ) );
+    // used for multidraw commands
+    qglVertexAttribIFormat( VA_DRAWID, 1, GL_UNSIGNED_INT, 0 );
+
+    qglBindVertexBuffer( 0, vertexCache.GetVertexBuffer(), 0, sizeof( idDrawVert ) );
+    qglBindVertexBuffer( 1, drawIdBuffer, 0, sizeof(uint32_t) );
+
+    qglVertexAttribBinding( VA_POSITION, 0 );
+    qglVertexAttribBinding( VA_TEXCOORD, 0 );
+    qglVertexAttribBinding( VA_NORMAL, 0 );
+    qglVertexAttribBinding( VA_TANGENT, 0 );
+    qglVertexAttribBinding( VA_BITANGENT, 0 );
+    qglVertexAttribBinding( VA_COLOR, 0 );
+    qglVertexAttribBinding( VA_DRAWID, 1 );
+    qglVertexBindingDivisor(1, 1);
+
+	qglEnableVertexAttribArray(VA_POSITION);
+	qglEnableVertexAttribArray(VA_TEXCOORD);
+	qglEnableVertexAttribArray(VA_NORMAL);
+	qglEnableVertexAttribArray(VA_TANGENT);
+	qglEnableVertexAttribArray(VA_BITANGENT);
+	qglEnableVertexAttribArray(VA_COLOR);
+	qglEnableVertexAttribArray(VA_DRAWID);  
+}
+
 void GL4Backend::BeginFrame(const viewDef_t *viewDef) {
-    SharedShaderParams *sharedParams = shaderParamBuffer.AllocateAndBind<SharedShaderParams>(1, GL_UNIFORM_BUFFER, 7);
+    SharedShaderParams *sharedParams = GetShaderParamBuffer<SharedShaderParams>();
     memcpy(sharedParams->projectionMatrix.ToFloatPtr(), viewDef->projectionMatrix, sizeof(idMat4));
     memcpy(sharedParams->viewMatrix.ToFloatPtr(), viewDef->worldSpace.modelViewMatrix, sizeof(idMat4));
-    sharedParams->viewProjectionMatrix = sharedParams->projectionMatrix * sharedParams->viewMatrix;
+    sharedParams->inverseViewMatrix = sharedParams->viewMatrix.Inverse();
+	myGlMultMatrix(sharedParams->viewMatrix.ToFloatPtr(), sharedParams->projectionMatrix.ToFloatPtr(), sharedParams->viewProjectionMatrix.ToFloatPtr());
+    BindShaderParams<SharedShaderParams>(1, GL_UNIFORM_BUFFER, 7);
+
+    // TODO: in the end, should suffice to call this once in Init instead of every frame
+    PrepareVertexAttribs();
 }
 
 void GL4Backend::EndFrame() {
     shaderParamBuffer.Lock();
-    globalImages->MakeUnusedImagesNonResident();
+    drawCommandBuffer.Lock();
+	globalImages->MakeUnusedImagesNonResident();
 }
 
 void GL4Backend::ExecuteRenderCommands(const emptyCommand_t *cmds) {
@@ -204,8 +239,7 @@ void GL4Backend::DrawView(const viewDef_t *viewDef) {
 
     if ( backEnd.viewDef->viewEntitys ) {
         // fill the depth buffer and clear color buffer to black except on subviews
-        void RB_STD_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs );
-        RB_STD_FillDepthBuffer( drawSurfs, numDrawSurfs );
+		depthStage.Draw(viewDef);
         RB_GLSL_DrawInteractions();
     }
 
@@ -230,4 +264,10 @@ void GL4Backend::DrawView(const viewDef_t *viewDef) {
     RB_RenderDebugTools( drawSurfs, numDrawSurfs );
 
     EndFrame();
+}
+
+void GL4Backend::MultiDrawIndirect(int count) {
+    drawCommandBuffer.BindBuffer(GL_DRAW_INDIRECT_BUFFER);
+    qglMultiDrawElementsIndirect(GL_TRIANGLES, GL_INDEX_TYPE, drawCommandBuffer.GetOffset(), count, 0);
+    drawCommandBuffer.MarkAsUsed(count * sizeof(DrawElementsIndirectCommand));
 }

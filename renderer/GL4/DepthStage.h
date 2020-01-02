@@ -14,9 +14,12 @@
 ******************************************************************************/
 #pragma once
 
-#include <renderer/tr_local.h>
+#include "../tr_local.h"
 #include "RenderStage.h"
 
+class GLSLProgram;
+struct DrawElementsIndirectCommand;
+struct GenericDepthShaderParams;
 
 class DepthStage : public RenderStage {
 public:
@@ -26,6 +29,22 @@ public:
     void Draw(const viewDef_t *viewDef);
 
 private:
-    GLSLProgram *depthShader;
+    GLSLProgram *genericDepthShader;
+    GLSLProgram *fastDepthShader;
 
+    DrawElementsIndirectCommand *drawCommands;
+    GenericDepthShaderParams *shaderParams;
+    int currentIndex;
+
+    void PartitionSurfaces(drawSurf_t **drawSurfs, int numDrawSurfs,
+            std::vector<drawSurf_t*> &subviewSurfs,
+            std::vector<drawSurf_t*> &opaqueSurfs,
+            std::vector<drawSurf_t*> &remainingSurfs);
+
+    bool ShouldDrawSurf(const drawSurf_t *surf) const;
+
+    void CreateGenericDrawCommands(const drawSurf_t *surf);
+
+    void GenericDepthPass(const viewDef_t *viewDef, drawSurf_t **drawSurfs, int numDrawSurfs);
+    void FastDepthPass(drawSurf_t **drawSurfs, int numDrawSurfs);
 };

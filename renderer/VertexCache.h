@@ -116,6 +116,9 @@ public:
 		return basePointer;
 	}
 
+	GLuint GetVertexBuffer() { return dynamicData.vertexBuffer.GetAPIObject(); }
+	GLuint GetIndexBuffer() { return dynamicData.indexBuffer.GetAPIObject(); }
+
 public:
 	static idCVar	r_showVertexCache;
 	static idCVar	r_staticVertexMemory;

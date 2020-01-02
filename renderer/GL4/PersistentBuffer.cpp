@@ -14,6 +14,7 @@
 ******************************************************************************/
 #include "precompiled.h"
 #include "PersistentBuffer.h"
+#include "../tr_local.h"
 
 PersistentBuffer::PersistentBuffer(): mBufferObject(0 ), mSize(0 ), mAlign(0 ), mMapBase(nullptr ), mCurrentOffset(0 ), mLastLocked(0 ) {}
 
@@ -28,7 +29,7 @@ void PersistentBuffer::Init(GLuint size, GLuint alignment ) {
 
 	mSize = ALIGN( size, alignment );
 	mAlign = alignment;
-	qglGenBuffers( 1, &mBufferObject );
+	qglCreateBuffers( 1, &mBufferObject );
 	qglNamedBufferStorage( mBufferObject, mSize, nullptr, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT );
 	mMapBase = ( byte* )qglMapNamedBufferRange( mBufferObject, 0, mSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT );
 	mCurrentOffset = 0;
@@ -107,4 +108,8 @@ void PersistentBuffer::Wait(LockedRange &range ) {
 		}
 	}
 	qglDeleteSync( range.fenceSync );
+}
+
+void PersistentBuffer::BindBuffer(GLenum target) {
+    qglBindBuffer(target, mBufferObject);
 }
