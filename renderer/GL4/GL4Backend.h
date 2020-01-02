@@ -19,7 +19,21 @@
 #include "DepthStage.h"
 #include "PersistentBuffer.h"
 
+const int MAX_DRAW_COMMANDS = 8192;
+const int MAX_PARAM_BLOCK_SIZE = 256;
+const int BUFFER_FRAMES = 3;  // number of frames our parameter buffer should be able to hold
+
 extern idCVar r_useGL4Backend;
+
+enum VertexAttribs {
+    VA_POSITION		= 0,
+    VA_NORMAL		= 2,
+    VA_COLOR		= 3,
+    VA_TEXCOORD		= 8,
+    VA_TANGENT		= 9,
+    VA_BITANGENT	= 10,
+    VA_DRAWID		= 15
+};
 
 // struct used for MultiDraw calls
 struct DrawElementsIndirectCommand {
@@ -42,6 +56,23 @@ public:
 
 	void ExecuteRenderCommands(const emptyCommand_t *cmds);
 
+	DrawElementsIndirectCommand *GetDrawCommandBuffer() { return drawCommands; }
+
+	/** This function will always return the same buffer until you actually bind the params with BindShaderParams */
+	template<typename T>
+	T* GetShaderParamBuffer() {
+		static_assert(sizeof(T) % sizeof(idVec4) == 0, "Shader param type must be aligned to vec4");
+        static_assert(sizeof(T) <= MAX_PARAM_BLOCK_SIZE, "Shader param type should not exceed the chosen max param block size");
+	    byte *rawBuffer = shaderParamBuffer.Reserve(MAX_DRAW_COMMANDS * sizeof(T));
+	    return reinterpret_cast<T*>(rawBuffer);
+	}
+
+	template<typename T>
+	void BindShaderParams(int count, GLenum target, GLuint index) {
+	    shaderParamBuffer.BindBufferRange(target, index, count * sizeof(T));
+	    shaderParamBuffer.MarkAsUsed(count * sizeof(T));
+	}
+
 private:
     GLint uboOffsetAlignment;
     GLint ssboOffsetAlignment;
@@ -52,6 +83,7 @@ private:
     DepthStage depthStage;
 
     void InitDrawIdBuffer();
+    void PrepareVertexAttribs();
 	void DrawView(const viewDef_t *viewDef);
 };
 

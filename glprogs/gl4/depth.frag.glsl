@@ -1,30 +1,35 @@
-#version 450 core
+#version 460 core
 #extension GL_ARB_bindless_texture : require
 
 struct ShaderParams {
     mat4 modelMatrix;
     mat4 textureMatrix;
-    vec4 clipPlane;
     vec4 color;
     vec4 alphaTest;
     sampler2D texture;
 };
 
+layout (std140, binding = 0) buffer CB0 {
+    ShaderParams params[];
+};
+
 layout (location = 0) in vec2 uv;
 layout (location = 1) in float clipPlaneDist;
-layout (location = 2) in flat ShaderParams params;
+layout (location = 2) in flat int drawId;
 
 layout (location = 0) out vec4 fragColor;
 
 void main() {
     if (clipPlaneDist < 0.0)
         discard;
-    if (params.alphaTest.x < 0) {
-        fragColor = params.color;
+    if (params[drawId].alphaTest.x < 0) {
+        fragColor = params[drawId].color;
     } else {
-        vec4 tex = texture2D(params.texture, uv);
-        if (tex.a <= params.alphaTest.x)
+        vec4 tex = texture2D(params[drawId].texture, uv);
+        if (tex.a <= params[drawId].alphaTest.x)
             discard;
-        fragColor = tex*params.color;
+        fragColor = tex*params[drawId].color;
     }
+	
+	fragColor = vec4(1, 0, 0, 1);
 }

@@ -17,6 +17,9 @@
 #include <renderer/tr_local.h>
 #include "RenderStage.h"
 
+class GLSLProgram;
+struct DrawElementsIndirectCommand;
+struct DepthShaderParams;
 
 class DepthStage : public RenderStage {
 public:
@@ -28,4 +31,11 @@ public:
 private:
     GLSLProgram *depthShader;
 
+    DrawElementsIndirectCommand *drawCommands;
+    DepthShaderParams *shaderParams;
+    int currentIndex;
+
+    void PrepareDrawCommands(const drawSurf_t *drawSurf);
+
+    void FillDrawCommands(const drawSurf_t *drawSurf);
 };
