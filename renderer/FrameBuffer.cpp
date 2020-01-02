@@ -19,6 +19,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "FrameBuffer.h"
 #include "glsl.h"
 #include "GLSLProgramManager.h"
+#include "Profiling.h"
 
 // all false at start
 bool primaryOn = false, shadowOn = false;
@@ -238,6 +239,7 @@ void CopyDepthBuffer( idImage *image, int x, int y, int imageWidth, int imageHei
 }
 
 void FB_CopyDepthBuffer() {
+    GL_PROFILE("CopyDepthBuffer");
 	bool msaa = (r_multiSamples.GetInteger() > 1);
 	if (r_fboSharedDepth.GetBool() && !msaa)
 		return;	//do not copy depth buffer, use the FBO-attached texture in postprocessing shaders

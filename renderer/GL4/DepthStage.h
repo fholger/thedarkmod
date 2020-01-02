@@ -19,7 +19,7 @@
 
 class GLSLProgram;
 struct DrawElementsIndirectCommand;
-struct DepthShaderParams;
+struct GenericDepthShaderParams;
 
 class DepthStage : public RenderStage {
 public:
@@ -29,13 +29,22 @@ public:
     void Draw(const viewDef_t *viewDef);
 
 private:
-    GLSLProgram *depthShader;
+    GLSLProgram *genericDepthShader;
+    GLSLProgram *fastDepthShader;
 
     DrawElementsIndirectCommand *drawCommands;
-    DepthShaderParams *shaderParams;
+    GenericDepthShaderParams *shaderParams;
     int currentIndex;
 
-    void PrepareDrawCommands(const drawSurf_t *drawSurf);
+    void PartitionSurfaces(drawSurf_t **drawSurfs, int numDrawSurfs,
+            std::vector<drawSurf_t*> &subviewSurfs,
+            std::vector<drawSurf_t*> &opaqueSurfs,
+            std::vector<drawSurf_t*> &perforatedSurfs);
 
-    void FillDrawCommands(const drawSurf_t *drawSurf);
+    bool ShouldDrawSurf(const drawSurf_t *surf) const;
+
+    void CreateGenericDrawCommands(const drawSurf_t *surf);
+
+    void GenericDepthPass(const viewDef_t *viewDef, const std::vector<drawSurf_t*> &drawSurfs);
+    void FastDepthPass(const std::vector<drawSurf_t*> &drawSurfs);
 };

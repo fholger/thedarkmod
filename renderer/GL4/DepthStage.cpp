@@ -20,7 +20,7 @@
 #include <renderer/FrameBuffer.h>
 #include <renderer/Profiling.h>
 
-struct DepthShaderParams {
+struct GenericDepthShaderParams {
     idMat4 modelViewMatrix;
     idMat4 textureMatrix;
     idVec4 color;
@@ -30,9 +30,14 @@ struct DepthShaderParams {
 };
 
 void DepthStage::Init() {
-    depthShader = programManager->Find("GL4Depth");
-    if (depthShader == nullptr) {
-        depthShader = programManager->LoadFromFiles("GL4Depth", "gl4/depth.vert.glsl", "gl4/depth.frag.glsl");
+    genericDepthShader = programManager->Find("GL4Depth");
+    if (genericDepthShader == nullptr) {
+        genericDepthShader = programManager->LoadFromFiles("GL4Depth", "gl4/depth.vert.glsl", "gl4/depth.frag.glsl");
+    }
+
+    fastDepthShader = programManager->Find("GL4DepthFast");
+    if (fastDepthShader == nullptr) {
+        fastDepthShader = programManager->LoadFromFiles("GL4DepthFast", "gl4/depthFast.vert.glsl", "gl4/black.frag.glsl");
     }
 }
 
@@ -42,26 +47,24 @@ void DepthStage::Shutdown() {
 void DepthStage::Draw(const viewDef_t *viewDef) {
     GL_PROFILE("DepthStage");
 
-    drawCommands = gl4Backend->GetDrawCommandBuffer();
-    shaderParams = gl4Backend->GetShaderParamBuffer<DepthShaderParams>();
-    currentIndex = 0;
+    qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertexCache.GetIndexBuffer());
 
-    depthShader->Activate();
+    std::vector<drawSurf_t*> subViewSurfs;
+    std::vector<drawSurf_t*> opaqueSurfs;
+    std::vector<drawSurf_t*> perforatedSurfs;
+    PartitionSurfaces(viewDef->drawSurfs, viewDef->numDrawSurfs, subViewSurfs, opaqueSurfs, perforatedSurfs);
+
+    std::sort(opaqueSurfs.begin(), opaqueSurfs.end(), [viewDef](const drawSurf_t* a, const drawSurf_t* b) -> bool {
+        float distA = ( a->space->entityDef->parms.origin - viewDef->renderView.vieworg ).LengthSqr();
+        float distB = ( b->space->entityDef->parms.origin - viewDef->renderView.vieworg ).LengthSqr();
+        return distA < distB;
+    });
+
     GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS );
-
-    idPlane mirrorClipPlane (0, 0, 0, 1);
-    if (viewDef->numClipPlanes > 0) {
-        mirrorClipPlane = viewDef->clipPlanes[0];
-    }
-    qglUniform4fv(0, 1, mirrorClipPlane.ToFloatPtr());
-
-    for (int i = 0; i < viewDef->numDrawSurfs; ++i) {
-        PrepareDrawCommands(viewDef->drawSurfs[i]);
-    }
-
-    gl4Backend->BindShaderParams<DepthShaderParams>(currentIndex, GL_SHADER_STORAGE_BUFFER, 0);
-	qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertexCache.GetIndexBuffer());
-    qglMultiDrawElementsIndirect(GL_TRIANGLES, GL_INDEX_TYPE, drawCommands, currentIndex, 0);
+    GenericDepthPass(viewDef, subViewSurfs);
+    GL_State( GLS_DEPTHFUNC_LESS );
+    FastDepthPass(opaqueSurfs);
+    GenericDepthPass(viewDef, perforatedSurfs);
 
     // Make the early depth pass available to shaders. #3877
     if ( !backEnd.viewDef->IsLightGem() && !r_skipDepthCapture.GetBool() ) {
@@ -70,66 +73,7 @@ void DepthStage::Draw(const viewDef_t *viewDef) {
     GLSLProgram::Deactivate();
 }
 
-void DepthStage::PrepareDrawCommands(const drawSurf_t *surf) {
-    const idMaterial *shader = surf->material;
-
-    if ( !shader->IsDrawn() ) {
-        return;
-    }
-
-    // some deforms may disable themselves by setting numIndexes = 0
-    if ( !surf->numIndexes ) {
-        return;
-    }
-
-    // translucent surfaces don't put anything in the depth buffer and don't
-    // test against it, which makes them fail the mirror clip plane operation
-    if ( shader->Coverage() == MC_TRANSLUCENT ) {
-        return;
-    }
-
-    if ( !surf->ambientCache.IsValid() ) {
-        common->Printf( "RB_T_FillDepthBuffer: !tri->ambientCache\n" );
-        return;
-    }
-
-    if ( surf->material->GetSort() == SS_PORTAL_SKY && g_enablePortalSky.GetInteger() == 2 ) {
-        return;
-    }
-
-    // get the expressions for conditionals / color / texcoords
-    const float *regs = surf->shaderRegisters;
-
-    // if all stages of a material have been conditioned off, don't do anything
-    int stage;
-    for ( stage = 0; stage < shader->GetNumStages() ; stage++ ) {
-        const shaderStage_t *pStage = shader->GetStage( stage );
-        // check the stage enable condition
-        if ( regs[ pStage->conditionRegister ] != 0 ) {
-            break;
-        }
-    }
-
-    if ( stage == shader->GetNumStages() ) {
-        return;
-    }
-
-    // TODO: implement polygon offset in shader?
-    // set polygon offset if necessary
-    /*if ( shader->TestMaterialFlag( MF_POLYGONOFFSET ) ) {
-        qglEnable( GL_POLYGON_OFFSET_FILL );
-        qglPolygonOffset( r_offsetFactor.GetFloat(), r_offsetUnits.GetFloat() * shader->GetPolygonOffset() );
-    }*/
-
-    FillDrawCommands( surf );
-
-    // reset polygon offset
-    /*if ( shader->TestMaterialFlag( MF_POLYGONOFFSET ) ) {
-        qglDisable( GL_POLYGON_OFFSET_FILL );
-    }*/
-}
-
-void DepthStage::FillDrawCommands( const drawSurf_t *surf ) {
+void DepthStage::CreateGenericDrawCommands(const drawSurf_t *surf ) {
     idVec4 color = colorBlack;
     const idMaterial *shader = surf->material;
     const float *regs = surf->shaderRegisters;
@@ -175,7 +119,7 @@ void DepthStage::FillDrawCommands( const drawSurf_t *surf ) {
             pStage->texture.image->MakeResident();
 
             int cmdIndex = currentIndex++;
-            DepthShaderParams &params = shaderParams[cmdIndex];
+            GenericDepthShaderParams &params = shaderParams[cmdIndex];
             memcpy(params.modelViewMatrix.ToFloatPtr(), surf->space->modelViewMatrix, sizeof(idMat4));
             params.color = color;
             params.alphaTest.x = regs[pStage->alphaTestRegister];
@@ -201,7 +145,7 @@ void DepthStage::FillDrawCommands( const drawSurf_t *surf ) {
 
     if ( drawSolid ) {  // draw the entire surface solid
         int cmdIndex = currentIndex++;
-        DepthShaderParams &params = shaderParams[cmdIndex];
+        GenericDepthShaderParams &params = shaderParams[cmdIndex];
         memcpy(params.modelViewMatrix.ToFloatPtr(), surf->space->modelViewMatrix, sizeof(idMat4));
         params.color = colorBlack;
         params.alphaTest.x = -1;
@@ -214,3 +158,119 @@ void DepthStage::FillDrawCommands( const drawSurf_t *surf ) {
         drawCommand.baseInstance = cmdIndex;
     }
 }
+
+void DepthStage::PartitionSurfaces(drawSurf_t **drawSurfs, int numDrawSurfs, std::vector<drawSurf_t *> &subviewSurfs,
+                                   std::vector<drawSurf_t *> &opaqueSurfs,
+                                   std::vector<drawSurf_t *> &perforatedSurfs) {
+    for (int i = 0; i < numDrawSurfs; ++i) {
+        drawSurf_t *surf = drawSurfs[i];
+        const idMaterial *material = surf->material;
+
+        if (!ShouldDrawSurf(surf)) {
+            continue;
+        }
+
+        if (material->GetSort() == SS_SUBVIEW) {
+            // sub view surfaces need to be rendered first in a generic pass due to mirror plane clipping
+            subviewSurfs.push_back(surf);
+            continue;
+        }
+
+        if (material->Coverage() == MC_PERFORATED) {
+            // these need alpha checks in the shader and thus can't be handled by the fast pass
+            perforatedSurfs.push_back(surf);
+        }
+
+        opaqueSurfs.push_back(surf);
+    }
+}
+
+bool DepthStage::ShouldDrawSurf(const drawSurf_t *surf) const {
+    const idMaterial *shader = surf->material;
+
+    if ( !shader->IsDrawn() ) {
+        return false;
+    }
+
+    // some deforms may disable themselves by setting numIndexes = 0
+    if ( !surf->numIndexes ) {
+        return false;
+    }
+
+    // translucent surfaces don't put anything in the depth buffer and don't
+    // test against it, which makes them fail the mirror clip plane operation
+    if ( shader->Coverage() == MC_TRANSLUCENT ) {
+        return false;
+    }
+
+    if ( !surf->ambientCache.IsValid() || !surf->indexCache.IsValid() ) {
+        common->Printf( "DepthStage: missing vertex or index cache\n" );
+        return false;
+    }
+
+    if ( surf->material->GetSort() == SS_PORTAL_SKY && g_enablePortalSky.GetInteger() == 2 ) {
+        return false;
+    }
+
+    // get the expressions for conditionals / color / texcoords
+    const float *regs = surf->shaderRegisters;
+
+    // if all stages of a material have been conditioned off, don't do anything
+    int stage;
+    for ( stage = 0; stage < shader->GetNumStages() ; stage++ ) {
+        const shaderStage_t *pStage = shader->GetStage( stage );
+        // check the stage enable condition
+        if ( regs[ pStage->conditionRegister ] != 0 ) {
+            break;
+        }
+    }
+    return stage != shader->GetNumStages();
+}
+
+void DepthStage::GenericDepthPass(const viewDef_t *viewDef, const std::vector<drawSurf_t*> &drawSurfs) {
+    GL_PROFILE("DepthPass_Generic");
+
+    drawCommands = gl4Backend->GetDrawCommandBuffer();
+    shaderParams = gl4Backend->GetShaderParamBuffer<GenericDepthShaderParams>();
+    currentIndex = 0;
+
+    genericDepthShader->Activate();
+
+    idPlane mirrorClipPlane (0, 0, 0, 1);
+    if (viewDef->numClipPlanes > 0) {
+        mirrorClipPlane = viewDef->clipPlanes[0];
+    }
+    qglUniform4fv(0, 1, mirrorClipPlane.ToFloatPtr());
+
+    for (drawSurf_t *surf : drawSurfs) {
+        // TODO: implement polygon offset in shader?
+        CreateGenericDrawCommands(surf);
+    }
+
+    gl4Backend->BindShaderParams<GenericDepthShaderParams>(currentIndex, GL_SHADER_STORAGE_BUFFER, 0);
+    qglMultiDrawElementsIndirect(GL_TRIANGLES, GL_INDEX_TYPE, drawCommands, currentIndex, 0);
+}
+
+void DepthStage::FastDepthPass(const std::vector<drawSurf_t *> &drawSurfs) {
+    GL_PROFILE("DepthPass_Fast");
+
+    drawCommands = gl4Backend->GetDrawCommandBuffer();
+    idMat4 *modelViewMatrices = gl4Backend->GetShaderParamBuffer<idMat4>();
+    currentIndex = 0;
+
+    fastDepthShader->Activate();
+
+    for (drawSurf_t *surf : drawSurfs) {
+        int cmdIndex = currentIndex++;
+        memcpy(modelViewMatrices[cmdIndex].ToFloatPtr(), surf->space->modelViewMatrix, sizeof(idMat4));
+        drawCommands[cmdIndex].count = surf->numIndexes;
+        drawCommands[cmdIndex].instanceCount = 1;
+        drawCommands[cmdIndex].firstIndex = surf->indexCache.offset / sizeof(glIndex_t);
+        drawCommands[cmdIndex].baseVertex = surf->ambientCache.offset / sizeof(idDrawVert);
+        drawCommands[cmdIndex].baseInstance = cmdIndex;
+    }
+
+    gl4Backend->BindShaderParams<idMat4>(currentIndex, GL_SHADER_STORAGE_BUFFER, 0);
+    qglMultiDrawElementsIndirect(GL_TRIANGLES, GL_INDEX_TYPE, drawCommands, currentIndex, 0);
+}
+
