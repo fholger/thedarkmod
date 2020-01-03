@@ -15,10 +15,10 @@
 #include "precompiled.h"
 #include "DepthStage.h"
 #include "GL4Backend.h"
-#include <renderer/GLSLProgramManager.h>
-#include <renderer/GLSLProgram.h>
-#include <renderer/FrameBuffer.h>
-#include <renderer/Profiling.h>
+#include "../GLSLProgramManager.h"
+#include "../GLSLProgram.h"
+#include "../FrameBuffer.h"
+#include "../Profiling.h"
 
 struct GenericDepthShaderParams {
     idMat4 modelViewMatrix;
@@ -51,10 +51,15 @@ void DepthStage::Draw(const viewDef_t *viewDef) {
 
     GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS );
     GenericDepthPass(viewDef, viewDef->drawSurfs, viewDef->numDrawSurfs);
+
+	// somewhat surprisingly, the fast path does not appear to be any faster than the default path
     /*std::vector<drawSurf_t*> subViewSurfs;
     std::vector<drawSurf_t*> opaqueSurfs;
     std::vector<drawSurf_t*> perforatedSurfs;
     PartitionSurfaces(viewDef->drawSurfs, viewDef->numDrawSurfs, subViewSurfs, opaqueSurfs, perforatedSurfs);
+
+    GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS );
+    GenericDepthPass(viewDef, subViewSurfs.data(), subViewSurfs.size());
 
     std::sort(opaqueSurfs.begin(), opaqueSurfs.end(), [viewDef](const drawSurf_t* a, const drawSurf_t* b) -> bool {
         float distA = ( a->space->entityDef->parms.origin - viewDef->renderView.vieworg ).LengthSqr();
@@ -62,11 +67,9 @@ void DepthStage::Draw(const viewDef_t *viewDef) {
         return distA < distB;
     });
 
-    GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS );
-    GenericDepthPass(viewDef, subViewSurfs);
     GL_State( GLS_DEPTHFUNC_LESS );
-    FastDepthPass(opaqueSurfs);
-    GenericDepthPass(viewDef, perforatedSurfs);*/
+    FastDepthPass(opaqueSurfs.data(), opaqueSurfs.size());
+    GenericDepthPass(viewDef, perforatedSurfs.data(), perforatedSurfs.size());*/
 
     // Make the early depth pass available to shaders. #3877
     if ( !backEnd.viewDef->IsLightGem() && !r_skipDepthCapture.GetBool() ) {

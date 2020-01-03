@@ -14,7 +14,7 @@
 ******************************************************************************/
 #pragma once
 
-#include <renderer/tr_local.h>
+#include "../tr_local.h"
 #include "RenderStage.h"
 
 class GLSLProgram;

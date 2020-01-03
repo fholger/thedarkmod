@@ -12,7 +12,6 @@
  Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
-#include <renderer/GL4/GL4Backend.h>
 #include "precompiled.h"
 #pragma hdrstop
 
@@ -20,6 +19,7 @@
 #include "FrameBuffer.h"
 #include "glsl.h"
 #include "Profiling.h"
+#include "GL4/GL4Backend.h"
 
 idRenderSystemLocal	tr;
 idRenderSystem	*renderSystem = &tr;

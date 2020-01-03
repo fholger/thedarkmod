@@ -14,9 +14,9 @@
 ******************************************************************************/
 #include "precompiled.h"
 #include "GL4Backend.h"
-#include <renderer/FrameBuffer.h>
-#include <renderer/Profiling.h>
-#include <renderer/glad.h>
+#include "../FrameBuffer.h"
+#include "../Profiling.h"
+#include "../glad.h"
 
 GL4Backend backendImpl;
 GL4Backend *gl4Backend = &backendImpl;

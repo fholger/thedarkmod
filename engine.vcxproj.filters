@@ -136,6 +136,9 @@
     <Filter Include="Renderer\glad">
       <UniqueIdentifier>{47f98cf0-60e3-4fea-ab19-c4ac45ad6cc4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Renderer\GL4">
+      <UniqueIdentifier>{d450ba58-45c2-4339-866f-720ec41a2167}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h">
@@ -1248,6 +1251,18 @@
     </ClInclude>
     <ClInclude Include="framework\minizip\minizip_private.h">
       <Filter>Framework\minizip</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\GL4\DepthStage.h">
+      <Filter>Renderer\GL4</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\GL4\GL4Backend.h">
+      <Filter>Renderer\GL4</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\GL4\PersistentBuffer.h">
+      <Filter>Renderer\GL4</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\GL4\RenderStage.h">
+      <Filter>Renderer\GL4</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -2946,6 +2961,15 @@
     </ClCompile>
     <ClCompile Include="renderer\glad_wgl.c">
       <Filter>Renderer\glad</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\GL4\DepthStage.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\GL4\GL4Backend.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\GL4\PersistentBuffer.cpp">
+      <Filter>Renderer\GL4</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include <renderer/tr_local.h>
+#include "../tr_local.h"
 #include "DepthStage.h"
 #include "PersistentBuffer.h"
 
