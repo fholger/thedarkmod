@@ -49,27 +49,36 @@ void DepthStage::Draw(const viewDef_t *viewDef) {
 
     qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertexCache.GetIndexBuffer());
 
-    GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS );
-    GenericDepthPass(viewDef, viewDef->drawSurfs, viewDef->numDrawSurfs);
+    //GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS );
+    //GenericDepthPass(viewDef, viewDef->drawSurfs, viewDef->numDrawSurfs);
 
 	// somewhat surprisingly, the fast path does not appear to be any faster than the default path
-    /*std::vector<drawSurf_t*> subViewSurfs;
+    std::vector<drawSurf_t*> subViewSurfs;
     std::vector<drawSurf_t*> opaqueSurfs;
     std::vector<drawSurf_t*> perforatedSurfs;
     PartitionSurfaces(viewDef->drawSurfs, viewDef->numDrawSurfs, subViewSurfs, opaqueSurfs, perforatedSurfs);
 
-    GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS );
-    GenericDepthPass(viewDef, subViewSurfs.data(), subViewSurfs.size());
+	if (!subViewSurfs.empty()) {
+		GL_State(GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS);
+		GenericDepthPass(viewDef, subViewSurfs.data(), subViewSurfs.size());
+	}
 
+	// sort by distance to camera (roughly) to profit from early-Z rejection
     std::sort(opaqueSurfs.begin(), opaqueSurfs.end(), [viewDef](const drawSurf_t* a, const drawSurf_t* b) -> bool {
-        float distA = ( a->space->entityDef->parms.origin - viewDef->renderView.vieworg ).LengthSqr();
-        float distB = ( b->space->entityDef->parms.origin - viewDef->renderView.vieworg ).LengthSqr();
-        return distA < distB;
+		//const idRenderMatrix& viewProj = viewDef->worldSpace.mvp;
+		//const float* modelMatA = a->space->modelMatrix;
+		//const float* modelMatB = b->space->modelMatrix;
+		//float zA = viewProj[2][0] * modelMatA[12] + viewProj[2][1] * modelMatA[13] + viewProj[2][2] * modelMatA[14] + viewProj[2][3];
+		//float zB = viewProj[2][0] * modelMatB[12] + viewProj[2][1] * modelMatB[13] + viewProj[2][2] * modelMatB[14] + viewProj[2][3];
+		//return zA < zB;
+
+		// the 14th entry in the model-view matrix is the Z component of the model's origin in view space
+		return a->space->modelViewMatrix[14] < b->space->modelViewMatrix[14];
     });
 
     GL_State( GLS_DEPTHFUNC_LESS );
     FastDepthPass(opaqueSurfs.data(), opaqueSurfs.size());
-    GenericDepthPass(viewDef, perforatedSurfs.data(), perforatedSurfs.size());*/
+    GenericDepthPass(viewDef, perforatedSurfs.data(), perforatedSurfs.size());
 
     // Make the early depth pass available to shaders. #3877
     if ( !backEnd.viewDef->IsLightGem() && !r_skipDepthCapture.GetBool() ) {

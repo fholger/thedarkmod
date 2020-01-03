@@ -1,6 +1,8 @@
 #version 450 core
 #extension GL_ARB_bindless_texture : require
 
+layout (early_fragment_tests) in;
+
 layout (location = 0) in vec2 fs_uv;
 layout (location = 1) in float fs_clipPlaneDist;
 layout (location = 2) in flat vec4 fs_color;
