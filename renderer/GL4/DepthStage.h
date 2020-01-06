@@ -39,7 +39,7 @@ private:
     void PartitionSurfaces(drawSurf_t **drawSurfs, int numDrawSurfs,
             std::vector<drawSurf_t*> &subviewSurfs,
             std::vector<drawSurf_t*> &opaqueSurfs,
-            std::vector<drawSurf_t*> &perforatedSurfs);
+            std::vector<drawSurf_t*> &remainingSurfs);
 
     bool ShouldDrawSurf(const drawSurf_t *surf) const;
 

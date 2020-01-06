@@ -55,13 +55,11 @@ void DepthStage::Draw(const viewDef_t *viewDef) {
 	// somewhat surprisingly, the fast path does not appear to be any faster than the default path
     std::vector<drawSurf_t*> subViewSurfs;
     std::vector<drawSurf_t*> opaqueSurfs;
-    std::vector<drawSurf_t*> perforatedSurfs;
-    PartitionSurfaces(viewDef->drawSurfs, viewDef->numDrawSurfs, subViewSurfs, opaqueSurfs, perforatedSurfs);
+    std::vector<drawSurf_t*> remainingSurfs;
+    PartitionSurfaces(viewDef->drawSurfs, viewDef->numDrawSurfs, subViewSurfs, opaqueSurfs, remainingSurfs);
 
-	if (!subViewSurfs.empty()) {
-		GL_State(GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS);
-		GenericDepthPass(viewDef, subViewSurfs.data(), subViewSurfs.size());
-	}
+	GL_State(GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS);
+	GenericDepthPass(viewDef, subViewSurfs.data(), subViewSurfs.size());
 
 	// sort by distance to camera (roughly) to profit from early-Z rejection
     std::sort(opaqueSurfs.begin(), opaqueSurfs.end(), [viewDef](const drawSurf_t* a, const drawSurf_t* b) -> bool {
@@ -78,7 +76,7 @@ void DepthStage::Draw(const viewDef_t *viewDef) {
 
     GL_State( GLS_DEPTHFUNC_LESS );
     FastDepthPass(opaqueSurfs.data(), opaqueSurfs.size());
-    GenericDepthPass(viewDef, perforatedSurfs.data(), perforatedSurfs.size());
+    GenericDepthPass(viewDef, remainingSurfs.data(), remainingSurfs.size());
 
     // Make the early depth pass available to shaders. #3877
     if ( !backEnd.viewDef->IsLightGem() && !r_skipDepthCapture.GetBool() ) {
@@ -175,7 +173,7 @@ void DepthStage::CreateGenericDrawCommands(const drawSurf_t *surf ) {
 
 void DepthStage::PartitionSurfaces(drawSurf_t **drawSurfs, int numDrawSurfs, std::vector<drawSurf_t *> &subviewSurfs,
                                    std::vector<drawSurf_t *> &opaqueSurfs,
-                                   std::vector<drawSurf_t *> &perforatedSurfs) {
+                                   std::vector<drawSurf_t *> &remainingSurfs) {
     for (int i = 0; i < numDrawSurfs; ++i) {
         drawSurf_t *surf = drawSurfs[i];
         const idMaterial *material = surf->material;
@@ -190,12 +188,13 @@ void DepthStage::PartitionSurfaces(drawSurf_t **drawSurfs, int numDrawSurfs, std
             continue;
         }
 
-        if (material->Coverage() == MC_PERFORATED) {
-            // these need alpha checks in the shader and thus can't be handled by the fast pass
-            perforatedSurfs.push_back(surf);
+        if (material->Coverage() == MC_OPAQUE) {
+			opaqueSurfs.push_back(surf);
+			continue;
         }
 
-        opaqueSurfs.push_back(surf);
+		// these may need alpha checks in the shader and thus can't be handled by the fast pass
+		remainingSurfs.push_back(surf);
     }
 }
 
@@ -242,6 +241,10 @@ bool DepthStage::ShouldDrawSurf(const drawSurf_t *surf) const {
 }
 
 void DepthStage::GenericDepthPass(const viewDef_t *viewDef, drawSurf_t **drawSurfs, int numDrawSurfs) {
+	if (numDrawSurfs <= 0) {
+		return;
+	}
+
     GL_PROFILE("DepthPass_Generic");
 
     drawCommands = gl4Backend->GetDrawCommandBuffer();
@@ -270,6 +273,10 @@ void DepthStage::GenericDepthPass(const viewDef_t *viewDef, drawSurf_t **drawSur
 }
 
 void DepthStage::FastDepthPass(drawSurf_t **drawSurfs, int numDrawSurfs) {
+	if (numDrawSurfs <= 0) {
+		return;
+	}
+
     GL_PROFILE("DepthPass_Fast");
 
     drawCommands = gl4Backend->GetDrawCommandBuffer();
