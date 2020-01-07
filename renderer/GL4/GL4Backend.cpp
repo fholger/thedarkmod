@@ -16,7 +16,6 @@
 #include "GL4Backend.h"
 #include "../FrameBuffer.h"
 #include "../Profiling.h"
-#include "../glad.h"
 
 GL4Backend backendImpl;
 GL4Backend *gl4Backend = &backendImpl;
@@ -60,11 +59,13 @@ void GL4Backend::Init() {
     shaderParamBuffer.Init(MAX_DRAW_COMMANDS * MAX_PARAM_BLOCK_SIZE * BUFFER_FRAMES, bufferAlignment);
     drawCommandBuffer.Init(MAX_DRAW_COMMANDS * sizeof(DrawElementsIndirectCommand) * BUFFER_FRAMES, 16);
     depthStage.Init();
+	interactionStage.Init();
 
 	PrepareVertexAttribs();
 }
 
 void GL4Backend::Shutdown() {
+	interactionStage.Shutdown();
     depthStage.Shutdown();
     drawCommandBuffer.Destroy();
     shaderParamBuffer.Destroy();
@@ -240,6 +241,7 @@ void GL4Backend::DrawView(const viewDef_t *viewDef) {
     if ( backEnd.viewDef->viewEntitys ) {
         // fill the depth buffer and clear color buffer to black except on subviews
 		depthStage.Draw(viewDef);
+		interactionStage.Draw( viewDef );
         RB_GLSL_DrawInteractions();
     }
 

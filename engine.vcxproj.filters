@@ -1264,6 +1264,9 @@
     <ClInclude Include="renderer\GL4\RenderStage.h">
       <Filter>Renderer\GL4</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\GL4\InteractionStage.h">
+      <Filter>Renderer\GL4</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -2969,6 +2972,9 @@
       <Filter>Renderer\GL4</Filter>
     </ClCompile>
     <ClCompile Include="renderer\GL4\PersistentBuffer.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\GL4\InteractionStage.cpp">
       <Filter>Renderer\GL4</Filter>
     </ClCompile>
   </ItemGroup>

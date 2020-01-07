@@ -17,6 +17,7 @@
 
 #include "../tr_local.h"
 #include "DepthStage.h"
+#include "InteractionStage.h"
 #include "PersistentBuffer.h"
 
 const int MAX_DRAW_COMMANDS = 8192;
@@ -87,6 +88,7 @@ private:
     PersistentBuffer drawCommandBuffer;
 
     DepthStage depthStage;
+	InteractionStage interactionStage;
 
     void InitDrawIdBuffer();
     void PrepareVertexAttribs();
