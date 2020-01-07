@@ -1,23 +1,131 @@
 #version 450 core
 #extension GL_ARB_bindless_texture : require
 
-layout (location = 0) in vec2 fs_uv;
-layout (location = 1) in float fs_clipPlaneDist;
-layout (location = 2) in flat vec4 fs_color;
-layout (location = 3) in flat float fs_alphaTest;
-layout (location = 4) in flat sampler2D fs_tex0;
+in vec3 var_Position;
+in vec2 var_TexDiffuse;
+in vec2 var_TexNormal;
+in vec2 var_TexSpecular;
+in vec4 var_TexLight;
+in vec4 var_Color;
+in vec3 var_WorldLightDir;
+
+in flat vec4 var_lightOrigin;
+in flat vec4 var_viewOrigin;
+
+in mat3 var_TangentBitangentNormalMatrix; 
+in vec3 var_LightDirLocal;  
+in vec3 var_ViewDirLocal;
+
+in flat sampler2D var_normalTexture;
+in flat sampler2D var_diffuseTexture;
+in flat sampler2D var_specularTexture;
+in flat vec4 var_diffuseColor;
+in flat vec4 var_specularColor;
+
+in flat sampler3D var_lightProjectionCubemap;
+in flat sampler2D var_lightProjectionTexture;
+in flat sampler2D var_lightFalloffTexture;
+
+in flat vec4 var_hasTextureDNS;
+
+layout (location = 0) uniform int u_RGTC;
+layout (location = 1) uniform int u_cubic;
+layout (location = 2) uniform int u_shadows;
 
 layout (location = 0) out vec4 fragColor;
 
+// common variables
+vec3 lightDir, viewDir;     //direction to light/eye in model coords
+vec3 L, V, H;               //normalized light, view and half angle vectors 
+float NdotH, NdotL, NdotV;
+vec3 RawN, N;
+
+
+void calcNormals() {
+    // compute normal from normal map, move from [0, 1] to [-1, 1] range, normalize 
+	if (var_hasTextureDNS[1] != 0) {
+		vec4 bumpTexel = texture ( var_normalTexture, var_TexNormal.st ) * 2. - 1.;
+    	RawN = u_RGTC == 1. 
+	    	? vec3(bumpTexel.x, bumpTexel.y, sqrt(max(1.-bumpTexel.x*bumpTexel.x-bumpTexel.y*bumpTexel.y, 0)))
+		    : normalize( bumpTexel.wyz ); 
+    	N = var_TangentBitangentNormalMatrix * RawN; 
+	}
+	else {
+		RawN = vec3(0, 0, 1);
+		N = var_TangentBitangentNormalMatrix[2];
+	}
+}
+
+//fetch surface normal at fragment
+void fetchDNS() {
+	//initialize common variables (TODO: move somewhere else?)
+	lightDir = var_lightOrigin.xyz - var_Position;
+	viewDir = var_viewOrigin.xyz - var_Position;
+	L = normalize(lightDir);
+	V = normalize(viewDir);
+	H = normalize(L + V);
+	calcNormals();
+	NdotH = clamp(dot(N, H), 0.0, 1.0);
+	NdotL = clamp(dot(N, L), 0.0, 1.0);
+	NdotV = clamp(dot(N, V), 0.0, 1.0);
+}
+
+vec3 lightColor() {
+	// compute light projection and falloff 
+	vec3 lightColor;
+	if (u_cubic == 1.0) {
+		vec3 cubeTC = var_TexLight.xyz * 2.0 - 1.0;
+		lightColor = texture(var_lightProjectionCubemap, cubeTC).rgb;
+		float att = clamp(1.0 - length(cubeTC), 0.0, 1.0);
+		lightColor *= att * att;
+	}
+	else {
+		vec3 lightProjection = textureProj(var_lightProjectionTexture, var_TexLight.xyw).rgb;
+		vec3 lightFalloff = texture(var_lightFalloffTexture, vec2(var_TexLight.z, 0.5)).rgb;
+		lightColor = lightProjection * lightFalloff;
+	}
+	return lightColor;
+}
+
+vec3 computeInteraction() {
+	vec4 fresnelParms = vec4(1.0, .23, .5, 1.0);
+	vec4 fresnelParms2 = vec4(.2, .023, 120.0, 4.0);
+	vec4 lightParms = vec4(.7, 1.8, 10.0, 30.0);
+
+	vec3 diffuse = texture(var_diffuseTexture, var_TexDiffuse).rgb;
+
+	vec3 specular = vec3(0.026);	//default value if texture not set?...
+	if (dot(var_specularColor, var_specularColor) > 0.0)
+		specular = texture(var_specularTexture, var_TexSpecular).rgb;
+
+	vec3 localL = normalize(var_LightDirLocal);
+	vec3 localV = normalize(var_ViewDirLocal);
+	//must be done in tangent space, otherwise smoothing will suffer (see #4958)
+	float NdotL = clamp(dot(RawN, localL), 0.0, 1.0);
+	float NdotV = clamp(dot(RawN, localV), 0.0, 1.0);
+	float NdotH = clamp(dot(RawN, normalize(localV + localL)), 0.0, 1.0);
+
+	// fresnel part, ported from test_direct.vfp
+	float fresnelTerm = pow(1.0 - NdotV, fresnelParms2.w);
+	float rimLight = fresnelTerm * clamp(NdotL - 0.3, 0.0, fresnelParms.z) * lightParms.y;
+	float specularPower = mix(lightParms.z, lightParms.w, specular.z);
+	float specularCoeff = pow(NdotH, specularPower) * fresnelParms2.z;
+	float fresnelCoeff = fresnelTerm * fresnelParms.y + fresnelParms2.y;
+
+	vec3 specularColor = specularCoeff * fresnelCoeff * specular * (diffuse * 0.25 + vec3(0.75));
+	float R2f = clamp(localL.z * 4.0, 0.0, 1.0);
+
+	float NdotL_adjusted = NdotL;
+	float light = rimLight * R2f + NdotL_adjusted;
+
+	return (specularColor * var_specularColor.rgb * R2f + diffuse * var_diffuseColor.rgb) 
+        * light * lightColor() * var_Color.rgb;
+}
+
 void main() {
-    if (fs_clipPlaneDist < 0.0)
-        discard;
-    if (fs_alphaTest < 0) {
-        fragColor = fs_color;
-    } else {
-        vec4 tex = texture2D(fs_tex0, fs_uv);
-        if (tex.a <= fs_alphaTest)
-            discard;
-        fragColor = tex*fs_color;
-    }
+	fetchDNS();
+	fragColor.rgb = computeInteraction();
+	//if (u_shadows)
+	//	UseShadowMap();
+	fragColor.a = 1.0;
 }

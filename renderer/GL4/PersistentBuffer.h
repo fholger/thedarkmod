@@ -32,7 +32,7 @@ public:
 
 	void BindBuffer(GLenum target);
 
-	void* GetOffset() const { return ( void* )( mCurrentOffset ); }
+	void* GetOffset() const { return ( void* )( (uintptr_t)mCurrentOffset ); }
 
 private:
 	struct LockedRange {

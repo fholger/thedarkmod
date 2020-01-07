@@ -20,6 +20,7 @@
 
 class GLSLProgram;
 struct DrawElementsIndirectCommand;
+struct InteractionShaderParams;
 
 class InteractionStage : public RenderStage {
 public:
@@ -32,6 +33,12 @@ public:
 	
 private:
 	GLSLProgram *interactionShader;
+    DrawElementsIndirectCommand *drawCommands;
+    InteractionShaderParams *shaderParams;
+    int currentIndex;
 
 	void DrawInteractionsForLight(const viewDef_t *viewDef, viewLight_t *vLight);
+	void CreateDrawCommandsForInteractions(viewLight_t *vLight, const drawSurf_t *interactions);
+	void CreateDrawCommandsForSingleSurface(const drawSurf_t *surf);
+	void CreateDrawCommand(drawInteraction_t *inter);
 };

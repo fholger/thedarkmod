@@ -242,7 +242,6 @@ void GL4Backend::DrawView(const viewDef_t *viewDef) {
         // fill the depth buffer and clear color buffer to black except on subviews
 		depthStage.Draw(viewDef);
 		interactionStage.Draw( viewDef );
-        RB_GLSL_DrawInteractions();
     }
 
     // now draw any non-light dependent shading passes
