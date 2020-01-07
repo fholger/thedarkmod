@@ -466,6 +466,7 @@
     <ClInclude Include="renderer\FrameBuffer.h" />
     <ClInclude Include="renderer\GL4\DepthStage.h" />
     <ClInclude Include="renderer\GL4\GL4Backend.h" />
+    <ClInclude Include="renderer\GL4\InteractionStage.h" />
     <ClInclude Include="renderer\GL4\PersistentBuffer.h" />
     <ClInclude Include="renderer\GL4\RenderStage.h" />
     <ClInclude Include="renderer\glad.h" />
@@ -1015,6 +1016,7 @@
     <ClCompile Include="renderer\FrameBuffer.cpp" />
     <ClCompile Include="renderer\GL4\DepthStage.cpp" />
     <ClCompile Include="renderer\GL4\GL4Backend.cpp" />
+    <ClCompile Include="renderer\GL4\InteractionStage.cpp" />
     <ClCompile Include="renderer\GL4\PersistentBuffer.cpp" />
     <ClCompile Include="renderer\glad.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>

@@ -5,7 +5,7 @@
 layout (location = 0) in vec4 position;
 layout (location = 15) in int drawId;
 
-layout (std140, binding = 0) buffer CB0 {
+layout (std430, binding = 0) buffer CB0 {
     mat4 modelViewMatrix[];
 };
 
