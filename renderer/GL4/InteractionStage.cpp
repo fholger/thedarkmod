@@ -36,12 +36,15 @@ struct InteractionShaderParams {
 	idVec4 diffuseColor;
 	idVec4 specularColor;
 	idVec4 hasTextureDNS;
+	idVec4 ambientRimColor;
 	uint64_t normalTexture;
 	uint64_t diffuseTexture;
 	uint64_t specularTexture;
 	uint64_t lightProjectionCubemap;
 	uint64_t lightProjectionTexture;
+	uint64_t lightFalloffCubemap;
 	uint64_t lightFalloffTexture;
+	uint64_t padding;
 };
 
 struct InteractionUniforms : GLSLUniformGroup {
@@ -50,6 +53,9 @@ struct InteractionUniforms : GLSLUniformGroup {
 	DEFINE_UNIFORM( int, RGTC )
 	DEFINE_UNIFORM( int, cubic )
 	DEFINE_UNIFORM( int, shadows )
+	DEFINE_UNIFORM( int, ambient )
+	DEFINE_UNIFORM( float, minLevel )
+	DEFINE_UNIFORM( float, gamma )
 };
 
 InteractionStage::InteractionStage()
@@ -111,13 +117,16 @@ void InteractionStage::DrawInteractionsForLight( const viewDef_t *viewDef, viewL
 	if ( vLight->shadows == LS_MAPS && vLight->lightShader->LightCastsShadows() ) {
 		//RB_GLSL_DrawInteractions_ShadowMap( vLight->globalInteractions, true );
 	}
+	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | GLS_DEPTHFUNC_EQUAL );
 	CreateDrawCommandsForInteractions( vLight, vLight->localInteractions );
 	if ( vLight->shadows == LS_MAPS && vLight->lightShader->LightCastsShadows() ) {
 		//RB_GLSL_DrawInteractions_ShadowMap( vLight->localInteractions );
 	}
+	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | GLS_DEPTHFUNC_EQUAL );
 	CreateDrawCommandsForInteractions( vLight, vLight->globalInteractions );
 
 	qglStencilFunc( GL_ALWAYS, 128, 255 );
+	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | GLS_DEPTHFUNC_LESS );
 	CreateDrawCommandsForInteractions(vLight, vLight->translucentInteractions);
 }
 
@@ -127,11 +136,13 @@ void InteractionStage::CreateDrawCommandsForInteractions( viewLight_t *vLight, c
 	}
 
 	GL_PROFILE("DrawInteractions");
-	gl4Backend->PrepareVertexAttribs();
 	interactionShader->Activate();
 	InteractionUniforms *uniforms = interactionShader->GetUniformGroup<InteractionUniforms>();
 	uniforms->RGTC.Set( globalImages->image_useNormalCompression.GetInteger() == 2 ? 1 : 0 );
 	uniforms->cubic.Set( vLight->lightShader->IsCubicLight() ? 1 : 0 );
+	uniforms->ambient.Set( vLight->lightShader->IsAmbientLight() ? 1 : 0 );
+	uniforms->minLevel.Set( backEnd.viewDef->IsLightGem() ? 0 : r_ambientMinLevel.GetFloat() );
+	uniforms->gamma.Set( backEnd.viewDef->IsLightGem() ? 1 : r_ambientGamma.GetFloat() );
 
 
 	if ( r_useScissor.GetBool() && !backEnd.currentScissor.Equals( vLight->scissorRect ) ) {
@@ -144,18 +155,12 @@ void InteractionStage::CreateDrawCommandsForInteractions( viewLight_t *vLight, c
 	}
 
 	// perform setup here that will be constant for all interactions
-	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | GLS_DEPTHFUNC_LESS );
     qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertexCache.GetIndexBuffer());
 	FB_BindShadowTexture();
 
 	drawCommands = gl4Backend->GetDrawCommandBuffer();
 	shaderParams = gl4Backend->GetShaderParamBuffer<InteractionShaderParams>();
 	currentIndex = 0;
-
-	// bind the vertex and fragment program
-	//ChooseInteractionProgram();
-	//Uniforms::Interaction *interactionUniforms = currrentInteractionShader->GetUniformGroup<Uniforms::Interaction>();
-	//interactionUniforms->SetForShadows( surf == backEnd.vLight->translucentInteractions );
 
 	for ( const drawSurf_t *surf = interactions; surf != nullptr; surf = surf->nextOnLight ) {
 		if ( surf->dsFlags & DSF_SHADOW_MAP_ONLY ) {
@@ -355,6 +360,7 @@ void InteractionStage::CreateDrawCommand( drawInteraction_t *din ) {
 
 	din->lightFalloffImage->MakeResident();
 	din->lightImage->MakeResident();
+	params.lightFalloffCubemap = din->lightFalloffImage->textureHandle;
 	params.lightFalloffTexture = din->lightFalloffImage->textureHandle;
 	params.lightProjectionTexture = din->lightImage->textureHandle;
 	params.lightProjectionCubemap = din->lightImage->textureHandle;
@@ -395,6 +401,7 @@ void InteractionStage::CreateDrawCommand( drawInteraction_t *din ) {
 	params.diffuseColor = din->diffuseColor;
 	params.specularColor = din->specularColor;
 	params.viewOrigin = din->localViewOrigin;
+	params.ambientRimColor = din->ambientRimColor;
 
 	if (backEnd.vLight->lightShader->IsAmbientLight()) {
 		params.lightOrigin = din->worldUpLocal;		

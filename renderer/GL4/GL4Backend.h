@@ -21,7 +21,7 @@
 #include "PersistentBuffer.h"
 
 const int MAX_DRAW_COMMANDS = 4096;
-const int MAX_PARAM_BLOCK_SIZE = 1792;
+const int MAX_PARAM_BLOCK_SIZE = 1824;
 const int BUFFER_FRAMES = 3;  // number of frames our parameter buffer should be able to hold
 
 extern idCVar r_useGL4Backend;

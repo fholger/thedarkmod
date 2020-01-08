@@ -25,11 +25,13 @@ struct ShaderParams {
     vec4 diffuseColor;
     vec4 specularColor;
     vec4 hasTextureDNS;
+    vec4 ambientRimColor;
     sampler2D normalTexture;
     sampler2D diffuseTexture;
     sampler2D specularTexture;
     sampler3D lightProjectionCubemap;
     sampler2D lightProjectionTexture;
+    sampler3D lightFalloffCubemap;
     sampler2D lightFalloffTexture;
 };
 
@@ -61,8 +63,12 @@ out flat vec4 var_specularColor;
 out flat sampler3D var_lightProjectionCubemap;
 out flat sampler2D var_lightProjectionTexture;
 out flat sampler2D var_lightFalloffTexture;
+out flat sampler3D var_lightFalloffCubemap;
 
 out flat vec4 var_hasTextureDNS;
+out flat vec4 var_rimColor;
+
+out flat mat4 var_modelMatrix;
 
 void sendTBN() {
 	// construct tangent-bitangent-normal 3x3 matrix   
@@ -114,6 +120,10 @@ void main() {
     var_lightProjectionCubemap = params[drawId].lightProjectionCubemap;
     var_lightProjectionTexture = params[drawId].lightProjectionTexture;
     var_lightFalloffTexture = params[drawId].lightFalloffTexture;
+    var_lightFalloffCubemap = params[drawId].lightFalloffCubemap;
     
     var_hasTextureDNS = params[drawId].hasTextureDNS;
+    var_rimColor = params[drawId].ambientRimColor;
+    
+    var_modelMatrix = params[drawId].modelMatrix;
 }
