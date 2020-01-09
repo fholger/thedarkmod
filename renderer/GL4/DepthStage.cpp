@@ -63,15 +63,12 @@ void DepthStage::Draw(const viewDef_t *viewDef) {
 
 	// sort by distance to camera (roughly) to profit from early-Z rejection
     std::sort(opaqueSurfs.begin(), opaqueSurfs.end(), [viewDef](const drawSurf_t* a, const drawSurf_t* b) -> bool {
-		//const idRenderMatrix& viewProj = viewDef->worldSpace.mvp;
-		//const float* modelMatA = a->space->modelMatrix;
-		//const float* modelMatB = b->space->modelMatrix;
-		//float zA = viewProj[2][0] * modelMatA[12] + viewProj[2][1] * modelMatA[13] + viewProj[2][2] * modelMatA[14] + viewProj[2][3];
-		//float zB = viewProj[2][0] * modelMatB[12] + viewProj[2][1] * modelMatB[13] + viewProj[2][2] * modelMatB[14] + viewProj[2][3];
-		//return zA < zB;
-
-		// the 14th entry in the model-view matrix is the Z component of the model's origin in view space
-		return a->space->modelViewMatrix[14] < b->space->modelViewMatrix[14];
+		idVec3 posA = a->space->entityDef->globalReferenceBounds.GetCenter();
+		idVec3 posB = b->space->entityDef->globalReferenceBounds.GetCenter();
+		const idRenderMatrix &viewProj = viewDef->worldSpace.mvp;
+		float zA = viewProj[2][0] * posA[0] + viewProj[2][1] * posA[1] + viewProj[2][2] * posA[2] + viewProj[2][3];
+		float zB = viewProj[2][0] * posB[0] + viewProj[2][1] * posB[1] + viewProj[2][2] * posB[2] + viewProj[2][3];
+		return zA < zB;
     });
 
     GL_State( GLS_DEPTHFUNC_LESS );
