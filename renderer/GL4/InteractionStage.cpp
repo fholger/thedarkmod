@@ -40,9 +40,7 @@ struct InteractionShaderParams {
 	uint64_t normalTexture;
 	uint64_t diffuseTexture;
 	uint64_t specularTexture;
-	uint64_t lightProjectionCubemap;
 	uint64_t lightProjectionTexture;
-	uint64_t lightFalloffCubemap;
 	uint64_t lightFalloffTexture;
 	uint64_t padding;
 };
@@ -360,10 +358,8 @@ void InteractionStage::CreateDrawCommand( drawInteraction_t *din ) {
 
 	din->lightFalloffImage->MakeResident();
 	din->lightImage->MakeResident();
-	params.lightFalloffCubemap = din->lightFalloffImage->textureHandle;
 	params.lightFalloffTexture = din->lightFalloffImage->textureHandle;
 	params.lightProjectionTexture = din->lightImage->textureHandle;
-	params.lightProjectionCubemap = din->lightImage->textureHandle;
 
 	memcpy(params.diffuseMatrix[0].ToFloatPtr(), din->diffuseMatrix[0].ToFloatPtr(), 2 * sizeof(idVec4));
 	din->diffuseImage->MakeResident();

@@ -26,13 +26,11 @@ struct ShaderParams {
     vec4 specularColor;
     vec4 hasTextureDNS;
     vec4 ambientRimColor;
-    sampler2D normalTexture;
-    sampler2D diffuseTexture;
-    sampler2D specularTexture;
-    sampler3D lightProjectionCubemap;
-    sampler2D lightProjectionTexture;
-    sampler3D lightFalloffCubemap;
-    sampler2D lightFalloffTexture;
+    uvec2 normalTexture;
+    uvec2 diffuseTexture;
+    uvec2 specularTexture;
+    uvec2 lightProjectionTexture;
+    uvec2 lightFalloffTexture;
 };
 
 layout (std140, binding = 0) buffer CB0 {
@@ -60,10 +58,8 @@ out flat sampler2D var_specularTexture;
 out flat vec4 var_diffuseColor;
 out flat vec4 var_specularColor;
 
-out flat sampler3D var_lightProjectionCubemap;
-out flat sampler2D var_lightProjectionTexture;
-out flat sampler2D var_lightFalloffTexture;
-out flat sampler3D var_lightFalloffCubemap;
+out flat uvec2 var_lightProjectionTexture;
+out flat uvec2 var_lightFalloffTexture;
 
 out flat vec4 var_hasTextureDNS;
 out flat vec4 var_rimColor;
@@ -111,16 +107,14 @@ void main() {
     var_lightOrigin = params[drawId].lightOrigin;
     var_viewOrigin = params[drawId].viewOrigin;
     
-    var_normalTexture = params[drawId].normalTexture;
-    var_diffuseTexture = params[drawId].diffuseTexture;
-    var_specularTexture = params[drawId].specularTexture;
+    var_normalTexture = sampler2D(params[drawId].normalTexture);
+    var_diffuseTexture = sampler2D(params[drawId].diffuseTexture);
+    var_specularTexture = sampler2D(params[drawId].specularTexture);
     var_diffuseColor = params[drawId].diffuseColor;
     var_specularColor = params[drawId].specularColor;
     
-    var_lightProjectionCubemap = params[drawId].lightProjectionCubemap;
     var_lightProjectionTexture = params[drawId].lightProjectionTexture;
     var_lightFalloffTexture = params[drawId].lightFalloffTexture;
-    var_lightFalloffCubemap = params[drawId].lightFalloffCubemap;
     
     var_hasTextureDNS = params[drawId].hasTextureDNS;
     var_rimColor = params[drawId].ambientRimColor;

@@ -22,10 +22,8 @@ in flat sampler2D var_specularTexture;
 in flat vec4 var_diffuseColor;
 in flat vec4 var_specularColor;
 
-in flat sampler3D var_lightProjectionCubemap;
-in flat sampler2D var_lightProjectionTexture;
-in flat sampler2D var_lightFalloffTexture;
-in flat sampler3D var_lightFalloffCubemap;
+in flat uvec2 var_lightProjectionTexture;
+in flat uvec2 var_lightFalloffTexture;
 
 in flat vec4 var_hasTextureDNS;
 in flat vec4 var_rimColor;
@@ -82,13 +80,13 @@ vec3 lightColor() {
 	vec3 lightColor;
 	if (u_cubic == 1.0) {
 		vec3 cubeTC = var_TexLight.xyz * 2.0 - 1.0;
-		lightColor = texture(var_lightProjectionCubemap, cubeTC).rgb;
+		lightColor = texture(sampler3D(var_lightProjectionTexture), cubeTC).rgb;
 		float att = clamp(1.0 - length(cubeTC), 0.0, 1.0);
 		lightColor *= att * att;
 	}
 	else {
-		vec3 lightProjection = textureProj(var_lightProjectionTexture, var_TexLight.xyw).rgb;
-		vec3 lightFalloff = texture(var_lightFalloffTexture, vec2(var_TexLight.z, 0.5)).rgb;
+		vec3 lightProjection = textureProj(sampler2D(var_lightProjectionTexture), var_TexLight.xyw).rgb;
+		vec3 lightFalloff = texture(sampler2D(var_lightFalloffTexture), vec2(var_TexLight.z, 0.5)).rgb;
 		lightColor = lightProjection * lightFalloff;
 	}
 	return lightColor;
@@ -144,8 +142,8 @@ vec3 ambientInteraction() {
 		float a = .25 - tl.x*tl.x - tl.y*tl.y - tl.z*tl.z;
 		light = vec4(vec3(a*2), 1); // FIXME pass r_lightScale as uniform
 	} else {
-		vec3 lightProjection = textureProj( var_lightProjectionTexture, var_TexLight.xyw ).rgb; 
-		vec3 lightFalloff = texture( var_lightFalloffTexture, vec2( var_TexLight.z, 0.5 ) ).rgb;
+		vec3 lightProjection = textureProj( sampler2D(var_lightProjectionTexture), var_TexLight.xyw ).rgb; 
+		vec3 lightFalloff = texture( sampler2D(var_lightFalloffTexture), vec2( var_TexLight.z, 0.5 ) ).rgb;
 		light = vec4(lightProjection * lightFalloff, 1);
 	} 
 
@@ -153,9 +151,9 @@ vec3 ambientInteraction() {
 		vec4 worldN = var_modelMatrix * vec4(N, 0); // rotation only
 		vec3 cubeTC = var_TexLight.xyz * 2.0 - 1.0;
 		// diffuse
-		vec4 light1 = texture(var_lightProjectionCubemap, worldN.xyz) * matDiffuse;
+		vec4 light1 = texture(sampler3D(var_lightProjectionTexture), worldN.xyz) * matDiffuse;
 		// specualr
-		light1.rgb += texture( var_lightFalloffCubemap, reflect, 2 ).rgb * matSpecular;
+		light1.rgb += texture( sampler3D(var_lightFalloffTexture), reflect, 2 ).rgb * matSpecular;
 		light.rgb *= color.rgb * light1.rgb;
 		light.a = light1.a;
 	} else {

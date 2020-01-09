@@ -1,11 +1,11 @@
 #version 450 core
 #extension GL_ARB_bindless_texture : require
 
-layout (location = 0) in vec2 fs_uv;
-layout (location = 1) in float fs_clipPlaneDist;
-layout (location = 2) in flat vec4 fs_color;
-layout (location = 3) in flat float fs_alphaTest;
-layout (location = 4) in flat sampler2D fs_tex0;
+in vec2 fs_uv;
+in float fs_clipPlaneDist;
+in flat vec4 fs_color;
+in flat float fs_alphaTest;
+in flat sampler2D fs_tex0;
 
 layout (location = 0) out vec4 fragColor;
 

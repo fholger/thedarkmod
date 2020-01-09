@@ -14,18 +14,18 @@ struct ShaderParams {
     mat4 textureMatrix;
     vec4 color;
     vec4 alphaTest;
-    sampler2D texture;
+    uvec2 textureHandle;
 };
 
-layout (std140, binding = 0) buffer CB0 {
+layout (std430, binding = 0) buffer CB0 {
     ShaderParams params[];
 };
 
-layout (location = 0) out vec2 fs_uv;
-layout (location = 1) out float fs_clipPlaneDist;
-layout (location = 2) out flat vec4 fs_color;
-layout (location = 3) out flat float fs_alphaTest;
-layout (location = 4) out flat sampler2D fs_tex0;
+out vec2 fs_uv;
+out float fs_clipPlaneDist;
+out flat vec4 fs_color;
+out flat float fs_alphaTest;
+out flat sampler2D fs_tex0;
 
 void main() {
     vec4 viewPos = params[drawId].modelViewMatrix * position;
@@ -34,5 +34,5 @@ void main() {
     fs_clipPlaneDist = dot(inverseViewMatrix * viewPos, clipPlane);
     fs_color = params[drawId].color;
 	fs_alphaTest = params[drawId].alphaTest.x;
-	fs_tex0 = params[drawId].texture;
+	fs_tex0 = sampler2D(params[drawId].textureHandle);
 }
