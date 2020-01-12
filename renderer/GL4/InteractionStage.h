@@ -17,6 +17,7 @@
 
 #include "RenderStage.h"
 #include "../tr_local.h"
+#include "LightClusterer.h"
 
 class GLSLProgram;
 struct DrawElementsIndirectCommand;
@@ -36,6 +37,8 @@ private:
     DrawElementsIndirectCommand *drawCommands;
     InteractionShaderParams *shaderParams;
     int currentIndex;
+
+	LightClusterer lightClusterer;
 
 	void DrawInteractionsForLight(const viewDef_t *viewDef, viewLight_t *vLight);
 	void CreateDrawCommandsForInteractions(viewLight_t *vLight, const drawSurf_t *interactions);

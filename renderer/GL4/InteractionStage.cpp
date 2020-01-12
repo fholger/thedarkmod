@@ -62,16 +62,22 @@ InteractionStage::InteractionStage()
 }
 
 void InteractionStage::Init() {
+	lightClusterer.Init();
     interactionShader = programManager->Find("GL4Interaction");
     if (interactionShader == nullptr) {
         interactionShader = programManager->LoadFromFiles("GL4Interaction", "gl4/interaction.vert.glsl", "gl4/interaction.frag.glsl");
     }
 }
 
-void InteractionStage::Shutdown() {}
+void InteractionStage::Shutdown() {
+	lightClusterer.Shutdown();
+}
 
 void InteractionStage::Draw( const viewDef_t *viewDef ) {
 	GL_PROFILE("InteractionStage");
+
+	lightClusterer.BuildViewClusters( *(idMat4 *)viewDef->projectionMatrix );
+	lightClusterer.CullLights( *(idMat4*) viewDef->worldSpace.modelViewMatrix, viewDef->viewLights );
 
 	if ( r_fboSRGB && !backEnd.viewDef->IsLightGem() ) {
 		qglEnable( GL_FRAMEBUFFER_SRGB );
