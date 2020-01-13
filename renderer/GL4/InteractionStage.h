@@ -22,6 +22,7 @@
 class GLSLProgram;
 struct DrawElementsIndirectCommand;
 struct InteractionShaderParams;
+struct ClusteredInteractionShaderParams;
 
 class InteractionStage : public RenderStage {
 public:
@@ -30,12 +31,14 @@ public:
 	void Init();
 	void Shutdown();
 
+	void DrawInteractionsClustered( const viewDef_t * viewDef );
 	void Draw(const viewDef_t *viewDef);
 	
 private:
 	GLSLProgram *interactionShader;
     DrawElementsIndirectCommand *drawCommands;
     InteractionShaderParams *shaderParams;
+	ClusteredInteractionShaderParams *clusteredShaderParams;
     int currentIndex;
 
 	LightClusterer lightClusterer;
@@ -44,4 +47,7 @@ private:
 	void CreateDrawCommandsForInteractions(viewLight_t *vLight, const drawSurf_t *interactions);
 	void CreateDrawCommandsForSingleSurface(const drawSurf_t *surf);
 	void CreateDrawCommand(drawInteraction_t *inter);
+	void CreateClusteredDrawCommand( drawInteraction_t * inter );
+
+	void PrepareLightData(const viewDef_t *viewDef);
 };

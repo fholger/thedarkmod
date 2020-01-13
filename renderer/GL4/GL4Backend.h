@@ -73,7 +73,19 @@ public:
 	}
 
 	template<typename T>
+	T* GetShaderArray() {
+	    byte *rawBuffer = shaderParamBuffer.Reserve(MAX_DRAW_COMMANDS * sizeof(T));
+	    return reinterpret_cast<T*>(rawBuffer);
+	}
+
+	template<typename T>
 	void BindShaderParams(int count, GLenum target, GLuint index) {
+	    shaderParamBuffer.BindBufferRange(target, index, count * sizeof(T));
+	    shaderParamBuffer.MarkAsUsed(count * sizeof(T));
+	}
+
+	template<typename T>
+	void BindShaderArray(int count, GLenum target, GLuint index) {
 	    shaderParamBuffer.BindBufferRange(target, index, count * sizeof(T));
 	    shaderParamBuffer.MarkAsUsed(count * sizeof(T));
 	}

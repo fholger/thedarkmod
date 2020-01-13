@@ -26,6 +26,8 @@ public:
 	void BuildViewClusters(const idMat4 &projectionMatrix);
 	void CullLights(const idMat4 &viewMatrix, const viewLight_t *lights);
 
+	void UploadToGpu();
+
 private:
 	// these values are taken from DOOM (2016), could try with other variations
 	const int NUM_TILES_X = 16;
@@ -34,8 +36,8 @@ private:
 	const int NUM_CLUSTERS = NUM_TILES_X * NUM_TILES_Y * NUM_TILES_Z;
 
 	struct ClusterLights {
-		int numLights;
-		int listOffset;
+		uint32_t numLights;
+		uint32_t listOffset;
 	};
 	std::vector<idBounds> clusterBoundsViewSpace;	
 	std::vector<int> lightIndexList;

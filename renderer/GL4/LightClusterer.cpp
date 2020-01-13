@@ -16,6 +16,7 @@
 #include "precompiled.h"
 #include "LightClusterer.h"
 #include "../Profiling.h"
+#include "GL4Backend.h"
 
 /*
 Implementation inspired by: http://www.aortiz.me/2018/12/21/CG.html
@@ -114,5 +115,14 @@ void LightClusterer::CullLights(const idMat4 &viewMatrix, const viewLight_t *lig
 		clusterLights[clusterId].numLights = offset - clusterLights[clusterId].listOffset;
 	}
 
+}
+
+void LightClusterer::UploadToGpu() {
+	ClusterLights *clusters = gl4Backend->GetShaderArray<ClusterLights>();
+	memcpy(clusters, clusterLights.data(), sizeof(ClusterLights) * clusterLights.size());
+	gl4Backend->BindShaderArray<ClusterLights>( clusterLights.size(), GL_SHADER_STORAGE_BUFFER, 9 );
+	uint32_t *lightList = gl4Backend->GetShaderArray<uint32_t>();
+	memcpy(lightList, lightIndexList.data(), lightIndexList.size());
+	gl4Backend->BindShaderArray<uint32_t>( lightIndexList.size(), GL_SHADER_STORAGE_BUFFER, 10 );
 }
 
