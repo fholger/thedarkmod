@@ -36,6 +36,7 @@ public:
 	
 private:
 	GLSLProgram *interactionShader;
+	GLSLProgram *clusteredInteractionShader;
     DrawElementsIndirectCommand *drawCommands;
     InteractionShaderParams *shaderParams;
 	ClusteredInteractionShaderParams *clusteredShaderParams;

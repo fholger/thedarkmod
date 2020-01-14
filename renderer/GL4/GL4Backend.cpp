@@ -250,19 +250,19 @@ void GL4Backend::DrawView(const viewDef_t *viewDef) {
 
     // fog and blend lights
     void RB_STD_FogAllLights( bool translucent );
-    RB_STD_FogAllLights( false );
+    //RB_STD_FogAllLights( false );
 
     // refresh fog and blend status
     backEnd.afterFogRendered = true;
 
     // now draw any post-processing effects using _currentRender
     if ( processed < numDrawSurfs ) {
-        RB_STD_DrawShaderPasses( drawSurfs + processed, numDrawSurfs - processed );
+        //RB_STD_DrawShaderPasses( drawSurfs + processed, numDrawSurfs - processed );
     }
 
-    RB_STD_FogAllLights( true ); // 2.08: second fog pass, translucent only
+    //RB_STD_FogAllLights( true ); // 2.08: second fog pass, translucent only
 
-    RB_RenderDebugTools( drawSurfs, numDrawSurfs );
+    //RB_RenderDebugTools( drawSurfs, numDrawSurfs );
 
     EndFrame();
 }

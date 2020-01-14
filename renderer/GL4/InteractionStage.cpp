@@ -75,6 +75,10 @@ struct LightShaderParams {
 	idMat4 lightProjectionFalloff;
 	uint64_t lightProjectionTexture;
 	uint64_t lightFalloffTexture;
+	int32_t cubic;
+	int32_t shadows;
+	int32_t ambient;
+	int32_t padding;
 };
 
 struct InteractionUniforms : GLSLUniformGroup {
@@ -88,9 +92,23 @@ struct InteractionUniforms : GLSLUniformGroup {
 	DEFINE_UNIFORM( float, gamma )
 };
 
+struct ClusteredInteractionUniforms : GLSLUniformGroup {
+	UNIFORM_GROUP_DEF( ClusteredInteractionUniforms )
+
+	DEFINE_UNIFORM( int, RGTC )
+	DEFINE_UNIFORM( float, minLevel )
+	DEFINE_UNIFORM( float, gamma )
+	DEFINE_UNIFORM( float, zNear )
+	DEFINE_UNIFORM( float, zFar )
+	DEFINE_UNIFORM( float, zScale )
+	DEFINE_UNIFORM( float, zBias )
+	DEFINE_UNIFORM( int, zSlices )
+};
+
 InteractionStage::InteractionStage()
-	: interactionShader(nullptr) {
-	
+	: interactionShader(nullptr)
+	, clusteredInteractionShader( nullptr )
+{
 }
 
 void InteractionStage::Init() {
@@ -99,6 +117,10 @@ void InteractionStage::Init() {
     if (interactionShader == nullptr) {
         interactionShader = programManager->LoadFromFiles("GL4Interaction", "gl4/interaction.vert.glsl", "gl4/interaction.frag.glsl");
     }
+    clusteredInteractionShader = programManager->Find("GL4ClusteredInteraction");
+    if (clusteredInteractionShader == nullptr) {
+        clusteredInteractionShader = programManager->LoadFromFiles("GL4ClusteredInteraction", "gl4/interaction_clustered.vert.glsl", "gl4/interaction_clustered.frag.glsl");
+    }
 }
 
 void InteractionStage::Shutdown() {
@@ -106,10 +128,22 @@ void InteractionStage::Shutdown() {
 }
 
 void InteractionStage::DrawInteractionsClustered( const viewDef_t *viewDef ) {
+	GL_PROFILE("DrawInteractionsClustered");
+	clusteredInteractionShader->Activate();
 	clusteredShaderParams = gl4Backend->GetShaderParamBuffer<ClusteredInteractionShaderParams>();
 	drawCommands = gl4Backend->GetDrawCommandBuffer();
 	currentIndex = 0;
 
+	ClusteredInteractionUniforms *uniforms = clusteredInteractionShader->GetUniformGroup<ClusteredInteractionUniforms>();
+	uniforms->RGTC.Set( globalImages->image_useNormalCompression.GetInteger() == 2 ? 1 : 0 );
+	uniforms->minLevel.Set( backEnd.viewDef->IsLightGem() ? 0 : r_ambientMinLevel.GetFloat() );
+	uniforms->gamma.Set( backEnd.viewDef->IsLightGem() ? 1 : r_ambientGamma.GetFloat() );
+	uniforms->zNear.Set(r_znear.GetFloat());
+	uniforms->zFar.Set(2000.f);
+	uniforms->zScale.Set(LightClusterer::NUM_TILES_Z / log2( 2000.f / r_znear.GetFloat()));
+	uniforms->zBias.Set(- LightClusterer::NUM_TILES_Z * log2(r_znear.GetFloat()) / log2( 2000.f / r_znear.GetFloat()));
+	uniforms->zSlices.Set(LightClusterer::NUM_TILES_Z);
+	
 	for (int i = 0; i < viewDef->numDrawSurfs; ++i) {
 		const drawSurf_t *surf = viewDef->drawSurfs[i];
 		const idMaterial	*material = surf->material;
@@ -117,7 +151,7 @@ void InteractionStage::DrawInteractionsClustered( const viewDef_t *viewDef ) {
 		drawInteraction_t	inter;
 
 		if ( !surf->ambientCache.IsValid() || !surf->indexCache.IsValid() ) {
-			return;
+			continue;
 		}
 
 		auto ambientRegs = material->GetAmbientRimColor().registers;
@@ -171,10 +205,6 @@ void InteractionStage::DrawInteractionsClustered( const viewDef_t *viewDef ) {
 				break;
 			}
 			case SL_SPECULAR: {
-				// nbohr1more: #4292 nospecular and nodiffuse fix
-				if ( backEnd.vLight->noSpecular ) {
-					break;
-				} 
 				if ( inter.specularImage ) {
 					CreateClusteredDrawCommand( &inter );
 				}
@@ -185,14 +215,18 @@ void InteractionStage::DrawInteractionsClustered( const viewDef_t *viewDef ) {
 			}
 			}
 
-			// draw the final interaction
-			CreateClusteredDrawCommand( &inter );
-			GL_CheckErrors();
 		}
+		// draw the final interaction
+		CreateClusteredDrawCommand( &inter );
 	}
 
 	gl4Backend->BindShaderParams<ClusteredInteractionShaderParams>( currentIndex, GL_SHADER_STORAGE_BUFFER, 0 );
 	gl4Backend->MultiDrawIndirect( currentIndex );
+
+	backEnd.depthFunc = GLS_DEPTHFUNC_EQUAL;
+	qglDisable( GL_FRAMEBUFFER_SRGB );
+	qglStencilFunc( GL_ALWAYS, 128, 255 );
+	GLSLProgram::Deactivate();
 }
 
 void InteractionStage::Draw( const viewDef_t *viewDef ) {
@@ -282,7 +316,6 @@ void InteractionStage::CreateDrawCommandsForInteractions( viewLight_t *vLight, c
 		            backEnd.viewDef->viewport.y1 + backEnd.currentScissor.y1,
 		            backEnd.currentScissor.x2 + 1 - backEnd.currentScissor.x1,
 		            backEnd.currentScissor.y2 + 1 - backEnd.currentScissor.y1 );
-		GL_CheckErrors();
 	}
 
 	// perform setup here that will be constant for all interactions
@@ -459,7 +492,6 @@ void InteractionStage::CreateDrawCommandsForSingleSurface( const drawSurf_t *sur
 
 		// draw the final interaction
 		CreateDrawCommand( &inter );
-		GL_CheckErrors();
 	}
 
 	// unhack depth range if needed
@@ -633,6 +665,10 @@ void InteractionStage::PrepareLightData( const viewDef_t *viewDef ) {
 
 		// TODO: expected in shader as local, need to pass inverse model matrix
 		memcpy( params.lightProjectionFalloff.ToFloatPtr(), vLight->lightProject, sizeof(idMat4) );
+
+		params.cubic = vLight->lightShader->IsCubicLight();
+		params.shadows = vLight->shadows;  // TODO: correct value?
+		params.ambient = vLight->lightShader->IsAmbientLight();
 
 		const float	*lightRegs = vLight->shaderRegisters;
 		const idMaterial *lightShader = vLight->lightShader;

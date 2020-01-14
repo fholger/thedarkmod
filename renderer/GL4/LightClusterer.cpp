@@ -42,7 +42,7 @@ void LightClusterer::BuildViewClusters( const idMat4 &projectionMatrix ) {
 	const float clipTileSizeX = 2.0f / NUM_TILES_X;
 	const float clipTileSizeY = 2.0f / NUM_TILES_Y;
 	const float zNear = r_znear.GetFloat();
-	const float zFar = 10000.f;  // TODO: figure out a good value, since projection uses infinite-far-z approximation
+	const float zFar = 2000.f;  // TODO: figure out a good value, since projection uses infinite-far-z approximation
 
 	clusterBoundsViewSpace.resize(NUM_CLUSTERS);
 

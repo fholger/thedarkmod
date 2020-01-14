@@ -18,6 +18,10 @@
 
 class LightClusterer {
 public:
+	static const int NUM_TILES_X = 16;
+	static const int NUM_TILES_Y = 8;
+	static const int NUM_TILES_Z = 24;
+
 	LightClusterer();
 
 	void Init();
@@ -30,9 +34,6 @@ public:
 
 private:
 	// these values are taken from DOOM (2016), could try with other variations
-	const int NUM_TILES_X = 16;
-	const int NUM_TILES_Y = 8;
-	const int NUM_TILES_Z = 24;
 	const int NUM_CLUSTERS = NUM_TILES_X * NUM_TILES_Y * NUM_TILES_Z;
 
 	struct ClusterLights {
