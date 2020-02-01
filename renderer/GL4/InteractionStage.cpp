@@ -103,6 +103,7 @@ struct ClusteredInteractionUniforms : GLSLUniformGroup {
 	DEFINE_UNIFORM( float, zScale )
 	DEFINE_UNIFORM( float, zBias )
 	DEFINE_UNIFORM( int, zSlices )
+	DEFINE_UNIFORM( int, numLights )
 };
 
 InteractionStage::InteractionStage()
@@ -164,7 +165,9 @@ void InteractionStage::DrawInteractionsClustered( const viewDef_t *viewDef ) {
 
 		inter.surf = surf;
 
-		R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewDef->renderView.vieworg, inter.localViewOrigin.ToVec3() );
+		//R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewDef->renderView.vieworg, inter.localViewOrigin.ToVec3() );
+		// FIXME: actually storing global view origin, so variable name is wrong...
+		inter.localViewOrigin.ToVec3() = backEnd.viewDef->renderView.vieworg;
 		inter.localViewOrigin[3] = 1;
 
 		inter.bumpImage = NULL;
@@ -232,7 +235,8 @@ void InteractionStage::DrawInteractionsClustered( const viewDef_t *viewDef ) {
 void InteractionStage::Draw( const viewDef_t *viewDef ) {
 	GL_PROFILE("InteractionStage");
 
-	if (r_useClusteredLighting.GetBool()) {
+	if (r_useClusteredLighting.GetBool() && !viewDef->IsLightGem()) {
+		clusteredInteractionShader->Activate();
 		lightClusterer.BuildViewClusters( *(idMat4 *)viewDef->projectionMatrix );
 		lightClusterer.CullLights( *(idMat4*) viewDef->worldSpace.modelViewMatrix, viewDef->viewLights );
 		lightClusterer.UploadToGpu();
@@ -701,5 +705,6 @@ void InteractionStage::PrepareLightData( const viewDef_t *viewDef ) {
 	}
 
 	gl4Backend->BindShaderParams<LightShaderParams>( lightCount, GL_SHADER_STORAGE_BUFFER, 5 );
+	clusteredInteractionShader->GetUniformGroup<ClusteredInteractionUniforms>()->numLights.Set( lightCount );
 }
 

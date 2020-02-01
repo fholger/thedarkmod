@@ -57,8 +57,11 @@ out flat vec4 var_rimColor;
 out flat mat4 var_modelMatrix;
 
 void sendTBN() {
-	// construct tangent-bitangent-normal 3x3 matrix   
-	var_TangentBitangentNormalMatrix = mat3( clamp(attr_Tangent,-1,1), clamp(attr_Bitangent,-1,1), clamp(attr_Normal,-1,1) );
+	// construct tangent-bitangent-normal 3x3 matrix in world space
+    vec3 worldTangent = normalize((params[drawId].modelMatrix * vec4(attr_Tangent, 0)).xyz);
+    vec3 worldBitangent = normalize((params[drawId].modelMatrix * vec4(attr_Bitangent, 0)).xyz);
+    vec3 worldNormal = normalize((params[drawId].modelMatrix * vec4(attr_Normal, 0)).xyz);
+	var_TangentBitangentNormalMatrix = mat3( clamp(worldTangent,-1,1), clamp(worldBitangent,-1,1), clamp(worldNormal,-1,1) );
 }
 
 
@@ -66,7 +69,7 @@ void main() {
     vec4 viewPos = params[drawId].modelViewMatrix * attr_Position;
     gl_Position = projectionMatrix * viewPos;
     
-	var_Position = attr_Position.xyz;
+	var_Position = (params[drawId].modelMatrix * attr_Position).xyz;
 
 	// normal map texgen
 	var_TexNormal.x = dot(attr_TexCoord, params[drawId].bumpMatrix[0]);
