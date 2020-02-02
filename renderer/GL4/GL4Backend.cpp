@@ -238,7 +238,7 @@ void GL4Backend::DrawView(const viewDef_t *viewDef) {
         backEnd.lightScale /= 2;
     backEnd.overBright = 1.0f;
 
-    if ( backEnd.viewDef->viewEntitys ) {
+    if ( viewDef->viewEntitys && viewDef->numDrawSurfs > 1 ) {  // FIXME: wtf does this not work at the ready screen?
         // fill the depth buffer and clear color buffer to black except on subviews
 		depthStage.Draw(viewDef);
 		interactionStage.Draw( viewDef );
