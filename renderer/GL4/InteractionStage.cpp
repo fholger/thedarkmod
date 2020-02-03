@@ -358,21 +358,21 @@ void InteractionStage::CreateDrawCommand( drawInteraction_t *din ) {
 
 	din->lightFalloffImage->MakeResident();
 	din->lightImage->MakeResident();
-	params.lightFalloffTexture = din->lightFalloffImage->textureHandle;
-	params.lightProjectionTexture = din->lightImage->textureHandle;
+	params.lightFalloffTexture = din->lightFalloffImage->BindlessHandle();
+	params.lightProjectionTexture = din->lightImage->BindlessHandle();
 
 	memcpy(params.diffuseMatrix[0].ToFloatPtr(), din->diffuseMatrix[0].ToFloatPtr(), 2 * sizeof(idVec4));
 	din->diffuseImage->MakeResident();
-	params.diffuseTexture = din->diffuseImage->textureHandle;
+	params.diffuseTexture = din->diffuseImage->BindlessHandle();
 
 	if ( din->bumpImage ) {
 		memcpy(params.bumpMatrix[0].ToFloatPtr(), din->bumpMatrix[0].ToFloatPtr(), 2 * sizeof(idVec4));
 		din->bumpImage->MakeResident();
-		params.normalTexture = din->bumpImage->textureHandle;
+		params.normalTexture = din->bumpImage->BindlessHandle();
 	}
 	memcpy(params.specularMatrix[0].ToFloatPtr(), din->specularMatrix[0].ToFloatPtr(), 2 * sizeof(idVec4));
 	din->specularImage->MakeResident();
-	params.specularTexture = din->specularImage->textureHandle;
+	params.specularTexture = din->specularImage->BindlessHandle();
 
 	static const idVec4	zero   { 0, 0, 0, 0 },
 	                    one	   { 1, 1, 1, 1 },

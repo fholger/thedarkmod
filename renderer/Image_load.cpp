@@ -1751,17 +1751,42 @@ void idImage::Print() const {
 }
 
 void idImage::MakeResident() {
-    if (!isResident) {
+	if (residency & IR_GRAPHICS == 0) {
+		common->Warning( "Trying to make resident a texture that does not reside in GPU memory!" );
+		return;
+	}
+    if (!isGpuResident) {
+		// Bind will try to load the texture, if necessary
+		Bind();
+		if (texnum == TEXTURE_NOT_LOADED || backgroundLoadState != IS_NONE) {
+			common->Warning( "Trying to make a texture resident that isn't loaded" );
+			textureHandle = 0;
+			return;
+		}
         textureHandle = qglGetTextureHandleARB(texnum);
+		if (textureHandle == 0) {
+			common->Warning( "Failed to get bindless texture handle" );
+			return;
+		}
         qglMakeTextureHandleResidentARB(textureHandle);
-        isResident = true;
+        isGpuResident = true;
     }
     lastNeededInFrame = backEnd.frameCount;
 }
 
 void idImage::MakeNonResident() {
-    if (isResident) {
+    if (isGpuResident) {
         qglMakeTextureHandleNonResidentARB(textureHandle);
-        isResident = false;
+        isGpuResident = false;
+		textureHandle = 0;
     }
+}
+
+GLuint64 idImage::BindlessHandle() {
+	if (!isGpuResident) {
+		common->Warning( "Acquiring bindless handle for non-resident texture. Diverting to white image" );
+		globalImages->whiteImage->MakeResident();
+		return globalImages->whiteImage->BindlessHandle();
+	}	
+	return textureHandle;
 }

@@ -237,6 +237,8 @@ idImage::idImage() {
 	memset( &cpuData, 0, sizeof( cpuData ) );
 	residency = IR_GRAPHICS;
 	backgroundLoadState = IS_NONE;
+	isGpuResident = false;
+	textureHandle = 0;
 }
 
 /*
@@ -862,6 +864,7 @@ idImage::Reload
 ===============
 */
 void idImage::Reload( bool checkPrecompressed, bool force ) {
+	MakeNonResident();
 
 	// always regenerate functional images
 	if ( generatorFunction ) {

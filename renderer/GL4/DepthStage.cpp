@@ -132,7 +132,7 @@ void DepthStage::CreateGenericDrawCommands(const drawSurf_t *surf ) {
             memcpy(params.modelViewMatrix.ToFloatPtr(), surf->space->modelViewMatrix, sizeof(idMat4));
             params.color = color;
             params.alphaTest.x = regs[pStage->alphaTestRegister];
-            params.texture = pStage->texture.image->textureHandle;
+            params.texture = pStage->texture.image->BindlessHandle();
             if (surf->shaderRegisters && pStage->texture.hasMatrix) {
                 RB_GetShaderTextureMatrix(surf->shaderRegisters, &pStage->texture, params.textureMatrix.ToFloatPtr());
             } else {

@@ -41,6 +41,11 @@ void PersistentBuffer::Destroy() {
 		return;
 	}
 
+	for (auto it : mRangeLocks) {
+		qglDeleteSync(it.fenceSync);
+	}
+	mRangeLocks.clear();
+
 	qglUnmapNamedBuffer( mBufferObject );
 	qglDeleteBuffers( 1, &mBufferObject );
 	mBufferObject = 0;

@@ -257,12 +257,14 @@ public:
 	imageLoadState_t	backgroundLoadState;	// state of background loading (usually disabled)
 
 	// START bindless texture support
+private:
 	GLuint64 textureHandle;
-	bool isResident;
+	bool isGpuResident;
+public:
 	int lastNeededInFrame;
-
 	void MakeResident();
 	void MakeNonResident();
+	GLuint64 BindlessHandle();
 	// END bindless texture support
 };
 
