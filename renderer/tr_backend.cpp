@@ -19,6 +19,7 @@
 #include "FrameBuffer.h"
 #include "glsl.h"
 #include "GLSLProgramManager.h"
+#include "backend/RenderBackend.h"
 
 backEndState_t	backEnd;
 idCVarBool image_showBackgroundLoads( "image_showBackgroundLoads", "0", CVAR_RENDERER, "1 = print outstanding background loads" );
@@ -970,7 +971,11 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 					}
 				}
 			}
-			RB_DrawView();
+			if( r_useNewBackend.GetBool() ) {
+				renderBackend->DrawView( backEnd.viewDef );				
+			} else {
+				RB_DrawView();
+			}
 			GL_CheckErrors();
 			if ( isv3d ) {
 				c_draw3d++;

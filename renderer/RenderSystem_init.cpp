@@ -20,6 +20,7 @@
 #include "FrameBuffer.h"
 #include "glsl.h"
 #include "GLSLProgramManager.h"
+#include "backend/RenderBackend.h"
 
 // Vista OpenGL wrapper check
 #ifdef _WIN32
@@ -395,6 +396,8 @@ void R_InitOpenGL( void ) {
 
 	// allocate the frame data, which may be more if smp is enabled
 	R_InitFrameData();
+
+	renderBackend->Init();
 
 	// Reset our gamma
 	R_SetColorMappings();
@@ -1543,6 +1546,7 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 		// free all of our texture numbers
 		soundSystem->ShutdownHW();
 		Sys_ShutdownInput();
+		renderBackend->Shutdown();
 		globalImages->PurgeAllImages();
 		// free the context and close the window
 		session->TerminateFrontendThread();
