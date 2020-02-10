@@ -142,6 +142,15 @@
     <Filter Include="Renderer\Backend">
       <UniqueIdentifier>{26537bda-7135-4d5d-b420-3003aa3a506b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="glprogs">
+      <UniqueIdentifier>{b995828f-9aba-4c08-a121-47364f58db35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="glprogs\stages">
+      <UniqueIdentifier>{cdb9f135-129a-4ea3-b6a0-50ab89ba8ce9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="glprogs\stages\interaction">
+      <UniqueIdentifier>{9d9e23d1-ff68-40c9-a9b8-1a3ec2455102}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h">
@@ -3179,6 +3188,27 @@
     </None>
     <None Include="game\game.def">
       <Filter>Game</Filter>
+    </None>
+    <None Include="glprogs\stages\interaction\interaction.common.fs.glsl">
+      <Filter>glprogs\stages\interaction</Filter>
+    </None>
+    <None Include="glprogs\stages\interaction\interaction.common.vs.glsl">
+      <Filter>glprogs\stages\interaction</Filter>
+    </None>
+    <None Include="glprogs\stages\interaction\interaction.stencil.vs.glsl">
+      <Filter>glprogs\stages\interaction</Filter>
+    </None>
+    <None Include="glprogs\stages\interaction\interaction.stencil.fs.glsl">
+      <Filter>glprogs\stages\interaction</Filter>
+    </None>
+    <None Include="glprogs\stages\interaction\interaction.params.glsl">
+      <Filter>glprogs\stages\interaction</Filter>
+    </None>
+    <None Include="glprogs\stages\interaction\interaction.ambient.fs.glsl">
+      <Filter>glprogs\stages\interaction</Filter>
+    </None>
+    <None Include="glprogs\stages\interaction\interaction.ambient.vs.glsl">
+      <Filter>glprogs\stages\interaction</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

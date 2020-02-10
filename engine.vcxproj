@@ -1314,6 +1314,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="game\game.def" />
+    <None Include="glprogs\stages\interaction\interaction.ambient.fs.glsl" />
+    <None Include="glprogs\stages\interaction\interaction.ambient.vs.glsl" />
+    <None Include="glprogs\stages\interaction\interaction.params.glsl" />
+    <None Include="glprogs\stages\interaction\interaction.stencil.fs.glsl" />
+    <None Include="glprogs\stages\interaction\interaction.stencil.vs.glsl" />
+    <None Include="glprogs\stages\interaction\interaction.common.fs.glsl" />
+    <None Include="glprogs\stages\interaction\interaction.common.vs.glsl" />
     <None Include="sys\win32\rc\res\BEVEL.BMP" />
     <None Include="sys\win32\rc\res\BITMAP2.BMP" />
     <None Include="sys\win32\rc\res\BMP00001.BMP" />
