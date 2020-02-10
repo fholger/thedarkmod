@@ -19,6 +19,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "FrameBuffer.h"
 #include "glsl.h"
 #include "GLSLProgramManager.h"
+#include "Profiling.h"
 
 // all false at start
 bool primaryOn = false, shadowOn = false;
@@ -298,6 +299,8 @@ void FB_CopyRender( idImage *image, int x, int y, int imageWidth, int imageHeigh
 }
 
 void FB_CopyRender( const copyRenderCommand_t &cmd ) {
+	GL_PROFILE("FB_CopyRender");
+
 	//stgatilov #4754: this happens during lightgem calculating in minimized windowed TDM
 	if ( cmd.imageWidth * cmd.imageHeight == 0 ) {
 		return;	//no pixels to be read
