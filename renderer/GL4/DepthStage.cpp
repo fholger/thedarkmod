@@ -61,16 +61,6 @@ void DepthStage::Draw(const viewDef_t *viewDef) {
 	GL_State(GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS);
 	GenericDepthPass(viewDef, subViewSurfs.data(), subViewSurfs.size());
 
-	// sort by distance to camera (roughly) to profit from early-Z rejection
-    std::sort(opaqueSurfs.begin(), opaqueSurfs.end(), [viewDef](const drawSurf_t* a, const drawSurf_t* b) -> bool {
-		idVec3 posA = a->space->entityDef->globalReferenceBounds.GetCenter();
-		idVec3 posB = b->space->entityDef->globalReferenceBounds.GetCenter();
-		const idRenderMatrix &viewProj = viewDef->worldSpace.mvp;
-		float zA = viewProj[2][0] * posA[0] + viewProj[2][1] * posA[1] + viewProj[2][2] * posA[2] + viewProj[2][3];
-		float zB = viewProj[2][0] * posB[0] + viewProj[2][1] * posB[1] + viewProj[2][2] * posB[2] + viewProj[2][3];
-		return zA < zB;
-    });
-
     GL_State( GLS_DEPTHFUNC_LESS );
     FastDepthPass(opaqueSurfs.data(), opaqueSurfs.size());
     GenericDepthPass(viewDef, remainingSurfs.data(), remainingSurfs.size());
