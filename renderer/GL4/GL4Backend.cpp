@@ -238,7 +238,7 @@ void GL4Backend::DrawView(const viewDef_t *viewDef) {
         backEnd.lightScale /= 2;
     backEnd.overBright = 1.0f;
 
-    if ( viewDef->viewEntitys && viewDef->numDrawSurfs > 1 ) {  // FIXME: wtf does this not work at the ready screen?
+    if ( viewDef->viewEntitys ) {
         // fill the depth buffer and clear color buffer to black except on subviews
 		depthStage.Draw(viewDef);
 		interactionStage.Draw( viewDef );
@@ -269,6 +269,7 @@ void GL4Backend::DrawView(const viewDef_t *viewDef) {
 
 void GL4Backend::MultiDrawIndirect(int count) {
     drawCommandBuffer.BindBuffer(GL_DRAW_INDIRECT_BUFFER);
+	vertexCache.BindIndex();
     qglMultiDrawElementsIndirect(GL_TRIANGLES, GL_INDEX_TYPE, drawCommandBuffer.GetOffset(), count, 0);
     drawCommandBuffer.MarkAsUsed(count * sizeof(DrawElementsIndirectCommand));
 }

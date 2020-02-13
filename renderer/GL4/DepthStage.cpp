@@ -47,8 +47,6 @@ void DepthStage::Shutdown() {
 void DepthStage::Draw(const viewDef_t *viewDef) {
     GL_PROFILE("DepthStage");
 
-    qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertexCache.GetIndexBuffer());
-
     //GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS );
     //GenericDepthPass(viewDef, viewDef->drawSurfs, viewDef->numDrawSurfs);
 
@@ -287,7 +285,7 @@ void DepthStage::FastDepthPass(drawSurf_t **drawSurfs, int numDrawSurfs) {
         drawCommands[cmdIndex].baseInstance = cmdIndex;
     }
 
-    gl4Backend->BindShaderParams<idMat4>(currentIndex, GL_SHADER_STORAGE_BUFFER, 0);
-    gl4Backend->MultiDrawIndirect(currentIndex);
+	gl4Backend->BindShaderParams<idMat4>(currentIndex, GL_SHADER_STORAGE_BUFFER, 0);
+	gl4Backend->MultiDrawIndirect(currentIndex);
 }
 

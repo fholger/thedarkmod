@@ -153,7 +153,6 @@ void InteractionStage::CreateDrawCommandsForInteractions( viewLight_t *vLight, c
 	}
 
 	// perform setup here that will be constant for all interactions
-    qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertexCache.GetIndexBuffer());
 	FB_BindShadowTexture();
 
 	drawCommands = gl4Backend->GetDrawCommandBuffer();
@@ -349,6 +348,10 @@ void InteractionStage::CreateDrawCommand( drawInteraction_t *din ) {
 		din->specularImage = globalImages->blackImage;
 	}
 
+	if ( !din->bumpImage || r_skipBump.GetBool() ) {
+		din->bumpImage = globalImages->blackImage;
+	}
+
 	int cmdIndex = currentIndex++;
 	InteractionShaderParams &params = shaderParams[cmdIndex];
 	DrawElementsIndirectCommand &command = drawCommands[cmdIndex];
@@ -365,11 +368,10 @@ void InteractionStage::CreateDrawCommand( drawInteraction_t *din ) {
 	din->diffuseImage->MakeResident();
 	params.diffuseTexture = din->diffuseImage->BindlessHandle();
 
-	if ( din->bumpImage ) {
-		memcpy(params.bumpMatrix[0].ToFloatPtr(), din->bumpMatrix[0].ToFloatPtr(), 2 * sizeof(idVec4));
-		din->bumpImage->MakeResident();
-		params.normalTexture = din->bumpImage->BindlessHandle();
-	}
+	memcpy(params.bumpMatrix[0].ToFloatPtr(), din->bumpMatrix[0].ToFloatPtr(), 2 * sizeof(idVec4));
+	din->bumpImage->MakeResident();
+	params.normalTexture = din->bumpImage->BindlessHandle();
+
 	memcpy(params.specularMatrix[0].ToFloatPtr(), din->specularMatrix[0].ToFloatPtr(), 2 * sizeof(idVec4));
 	din->specularImage->MakeResident();
 	params.specularTexture = din->specularImage->BindlessHandle();
