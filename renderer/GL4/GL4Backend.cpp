@@ -166,7 +166,8 @@ void GL4Backend::ExecuteRenderCommands(const emptyCommand_t *cmds) {
                 //RB_SetBuffer( cmds );
                 break;
             case RC_BLOOM:
-                RB_Bloom();
+                void RB_Tonemap();
+                RB_Tonemap();
                 fboOff = true;
                 break;
             case RC_COPY_RENDER:
