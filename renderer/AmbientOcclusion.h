@@ -15,6 +15,7 @@
 
 #pragma once
 
+extern idCVar r_ssao;
 
 class AmbientOcclusion {
 public:
@@ -23,7 +24,12 @@ public:
 	void Init();
 	void Shutdown();
 
+	void ComputeSSAOFromDepth();
+
 private:
 	GLuint ssaoFBO;
 	idImage *ssaoColorBuffer;
+	GLSLProgram *ssaoShader;
 };
+
+extern AmbientOcclusion *ambientOcclusion;
