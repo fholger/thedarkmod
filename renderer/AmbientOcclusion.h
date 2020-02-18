@@ -26,6 +26,8 @@ public:
 
 	void ComputeSSAOFromDepth();
 
+	void BindSSAOTexture(int index);
+
 private:
 	GLuint ssaoFBO;
 	idImage *ssaoColorBuffer;

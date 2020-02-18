@@ -24,6 +24,8 @@
 // Vista OpenGL wrapper check
 #ifdef _WIN32
 #include "../sys/win32/win_local.h"
+#include "AmbientOcclusion.h"
+
 #endif
 
 // functions that are not called every frame
@@ -404,6 +406,10 @@ void R_InitOpenGL( void ) {
 
 	cmdSystem->AddCommand( "reloadGLSLprograms", R_ReloadGLSLPrograms_f, CMD_FL_RENDERER, "reloads GLSL programs" );
 	cmdSystem->AddCommand( "reloadARBprograms", R_ReloadARBPrograms_f, CMD_FL_RENDERER, "reloads ARB programs" );
+
+	// FIXME
+	ambientOcclusion->Init();
+	qglBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	R_ReloadARBPrograms_f( idCmdArgs() );
 	R_ReloadGLSLPrograms_f( idCmdArgs() );

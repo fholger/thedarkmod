@@ -17,6 +17,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "GLSLProgramManager.h"
 #include "GLSLProgram.h"
 #include "glsl.h"
+#include "AmbientOcclusion.h"
 
 GLSLProgramManager programManagerInstance;
 GLSLProgramManager *programManager = &programManagerInstance;
@@ -250,6 +251,9 @@ namespace {
 			if ( r_legacyTangents.GetBool() ) {
 				defines.Set( "LEGACY_BITANGENTS", "1" );
 			}
+			if ( r_ssao.GetBool() ) {
+				defines.Set( "USE_SSAO", "1" );
+			}
 			DefaultProgramInit( program, defines, baseName + ".vs", baseName + ".fs" );
 			program->Activate();
 			Uniforms::Interaction *interactionUniforms = program->GetUniformGroup<Uniforms::Interaction>();
@@ -260,6 +264,8 @@ namespace {
 			interactionUniforms->lightProjectionTexture.Set( 2 );
 			interactionUniforms->diffuseTexture.Set( 3 );
 			interactionUniforms->specularTexture.Set( 4 );
+
+			interactionUniforms->ssaoTexture.Set(9);
 
 			// can't have sampler2D, usampler2D, samplerCube have the same TMU index
 			interactionUniforms->lightProjectionCubemap.Set( 5 );

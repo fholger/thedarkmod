@@ -25,12 +25,14 @@ out vec4 var_TexLight;
 out mat3 var_TangentBinormalNormalMatrix;  
 out vec4 var_Color; 
 out vec3 var_tc0;  
-out vec3 var_localViewDir;  
+out vec3 var_localViewDir;
+out vec4 var_ClipPosition;
 
 void main( void ) {     
     // transform vertex position into homogenous clip-space  
-	gl_Position = tdm_transform(attr_Position);
-	
+	var_ClipPosition = tdm_transform(attr_Position);
+	gl_Position = var_ClipPosition;
+
 	// transform vertex position into world space  
 	var_Position = attr_Position.xyz;
 

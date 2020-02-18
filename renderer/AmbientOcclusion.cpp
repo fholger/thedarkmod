@@ -31,7 +31,7 @@ AmbientOcclusion *ambientOcclusion = &ambientOcclusionImpl;
 
 static void CreateSSAOColorBuffer(idImage *image) {
 	image->type = TT_2D;
-	image->GenerateAttachment(r_customHeight.GetInteger(), r_customHeight.GetInteger(), GL_RED);
+	image->GenerateAttachment(r_customWidth.GetInteger(), r_customHeight.GetInteger(), GL_COLOR);
 }
 
 AmbientOcclusion::AmbientOcclusion() : ssaoFBO(0), ssaoColorBuffer(nullptr), ssaoShader(nullptr) {
@@ -66,6 +66,7 @@ void AmbientOcclusion::ComputeSSAOFromDepth() {
 	GL_PROFILE( "SSAO" );
 
 	qglBindFramebuffer( GL_FRAMEBUFFER, ssaoFBO );
+	qglClear(GL_COLOR_BUFFER_BIT);
 	GL_SelectTexture( 0 );
 	globalImages->currentDepthImage->Bind();
 	ssaoShader->Activate();
@@ -74,4 +75,9 @@ void AmbientOcclusion::ComputeSSAOFromDepth() {
 
 	// FIXME: this is a bit hacky
 	qglBindFramebuffer( GL_FRAMEBUFFER, fboPrimary );
+}
+
+void AmbientOcclusion::BindSSAOTexture(int index) {
+	GL_SelectTexture(index);
+	ssaoColorBuffer->Bind();
 }
