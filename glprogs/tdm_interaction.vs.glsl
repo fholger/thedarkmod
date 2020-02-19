@@ -30,6 +30,7 @@ out vec2 var_TexNormal;
 out vec2 var_TexSpecular;
 out vec4 var_TexLight;
 out vec4 var_Color;
+out vec4 var_ClipPosition;
 
 #pragma tdm_include "tdm_bitangents.glsl"
 
@@ -38,7 +39,8 @@ out vec3 var_WorldLightDir;
 
 void interactionProcessVertex() {
 	// transform vertex position into homogenous clip-space
-	gl_Position = tdm_transform(attr_Position);
+	var_ClipPosition = tdm_transform(attr_Position);
+	gl_Position = var_ClipPosition;
 
 	// transform vertex position into world space
 	var_Position = attr_Position.xyz;

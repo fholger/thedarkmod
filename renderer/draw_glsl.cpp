@@ -69,7 +69,9 @@ static void ChooseInteractionProgram() {
 			currrentInteractionShader = programManager->stencilInteractionShader;
 	}
 	currrentInteractionShader->Activate();
-	currrentInteractionShader->GetUniformGroup<Uniforms::Interaction>()->RGTC.Set( globalImages->image_useNormalCompression.GetInteger() == 2 ? 1 : 0 );
+	Uniforms::Interaction *uniforms = currrentInteractionShader->GetUniformGroup<Uniforms::Interaction>();
+	uniforms->RGTC.Set(globalImages->image_useNormalCompression.GetInteger() == 2 ? 1 : 0 );
+	uniforms->ssaoEnabled.Set(r_ssao.GetBool());
 	GL_CheckErrors();
 }
 

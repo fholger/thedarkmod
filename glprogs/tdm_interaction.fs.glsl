@@ -11,6 +11,7 @@ in vec2 var_TexDiffuse;
 in vec2 var_TexNormal;
 in vec2 var_TexSpecular;
 in vec4 var_TexLight;
+in vec4 var_ClipPosition;
 
 uniform sampler2D u_normalTexture;
 uniform sampler2D u_diffuseTexture;
@@ -30,6 +31,11 @@ uniform vec4 	u_specularColor;
 uniform int		u_testSpecularFix;	//stgatilov #5044: for testing only!
 uniform int		u_testBumpmapLightTogglingFix;  //stgatilov #4825: for testing only
 
+uniform sampler2D u_ssaoTexture;
+uniform int u_ssaoEnabled;
+float sampleSSAO() {
+	return texture(u_ssaoTexture, 0.5 + 0.5 * var_ClipPosition.xy / var_ClipPosition.w).r;
+}
 
 // output of fetchDNS
 vec3 RawN, N;
@@ -146,6 +152,9 @@ vec3 advancedInteraction() {
 	else
 		totalColor = (specularColor * R2f + diffuse) * light * u_diffuseColor.rgb * lightColor() * var_Color.rgb;
 
+	if (u_ssaoEnabled == 1) {
+		totalColor *= sampleSSAO();
+	}
 	return totalColor;
 }
 

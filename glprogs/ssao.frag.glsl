@@ -58,7 +58,7 @@ void main() {
 		occlusion += step(falloff, difference);// * (1.0 - smoothstep(falloff, area, difference));
 	}
 
-	float ao = clamp(1.0 - totalStrength * occlusion * (1.0 / samples), 0, 1);
+	float ao = clamp(base + 1.0 - totalStrength * occlusion * (1.0 / samples), 0, 1);
 	FragColor = vec4(ao, ao, ao, 1);
 	//FragColor = vec4(0.5 * normal + 0.5, 1);
 }

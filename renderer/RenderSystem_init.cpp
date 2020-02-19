@@ -1573,6 +1573,7 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 		session->TerminateFrontendThread();
 		vertexCache.Shutdown();
 		FB_Clear();
+		ambientOcclusion->Shutdown();
 		GLimp_Shutdown();
 		glConfig.isInitialized = false;
 

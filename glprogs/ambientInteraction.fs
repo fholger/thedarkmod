@@ -30,19 +30,12 @@ uniform mat4 u_modelMatrix;
 uniform float u_RGTC;
 uniform vec4 u_rimColor;
 
-#pragma tdm_define "USE_SSAO"
-
-#ifdef USE_SSAO
 uniform sampler2D u_ssaoTexture;
+uniform int u_ssaoEnabled;
 float sampleSSAO() {
 	return texture(u_ssaoTexture, 0.5 + 0.5 * var_ClipPosition.xy / var_ClipPosition.w).r;
 }
-#else
-float sampleSSAO() {
-	return 1;
-}
-#endif
-      
+
 void main() {         
 	// compute the diffuse term     
 	vec4 matDiffuse = texture( u_diffuseTexture, var_TexDiffuse );
@@ -106,7 +99,10 @@ void main() {
 		light.rgb += u_rimColor.rgb * NV * NV;
 	}
 
-	FragColor = light * sampleSSAO();
+	if (u_ssaoEnabled == 1) {
+		light *= sampleSSAO();
+	}
+	FragColor = light;
 }
 
 // fresnel part, saved here for future revisit

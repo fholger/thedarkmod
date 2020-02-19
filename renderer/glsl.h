@@ -142,6 +142,7 @@ namespace Uniforms {
 		DEFINE_UNIFORM( vec3, lightColor )
 
 		DEFINE_UNIFORM( sampler, ssaoTexture )
+		DEFINE_UNIFORM( int, ssaoEnabled )
 
 		// temp
 		DEFINE_UNIFORM( int, shadowMapHistory )
