@@ -31,6 +31,7 @@ public:
 private:
 	GLuint ssaoFBO;
 	idImage *ssaoColorBuffer;
+	idImage *ssaoNoise;
 	GLSLProgram *ssaoShader;
 };
 
