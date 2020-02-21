@@ -30,9 +30,15 @@ public:
 
 private:
 	GLuint ssaoFBO;
-	idImage *ssaoColorBuffer;
+	GLuint ssaoBlurFBO;
+	idImage *ssaoResult;
+	idImage *ssaoBlurred;
 	idImage *ssaoNoise;
 	GLSLProgram *ssaoShader;
+	GLSLProgram *ssaoBlurShader;
+
+    void SSAOPass();
+    void BlurPass();
 };
 
 extern AmbientOcclusion *ambientOcclusion;

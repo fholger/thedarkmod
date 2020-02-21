@@ -48,6 +48,12 @@ namespace {
 		DEFINE_UNIFORM( float, baseValue )
 	};
 
+	struct BlurUniforms : GLSLUniformGroup {
+	    UNIFORM_GROUP_DEF( BlurUniforms )
+
+	    DEFINE_UNIFORM( sampler, ssaoTexture )
+	};
+
 	void CreateSSAOColorBuffer(idImage *image) {
 		image->type = TT_2D;
 		image->GenerateAttachment(r_customWidth.GetInteger(), r_customHeight.GetInteger(), GL_COLOR);
@@ -73,28 +79,52 @@ namespace {
 	}
 }
 
-AmbientOcclusion::AmbientOcclusion() : ssaoFBO(0), ssaoColorBuffer(nullptr), ssaoNoise(nullptr), ssaoShader(nullptr) {
+AmbientOcclusion::AmbientOcclusion() : ssaoFBO(0), ssaoBlurFBO(0), ssaoResult(nullptr), ssaoBlurred(nullptr), ssaoNoise(nullptr), ssaoShader(nullptr) {
 }
 
 void AmbientOcclusion::Init() {
-	ssaoColorBuffer = globalImages->ImageFromFunction("SSAO ColorBuffer", CreateSSAOColorBuffer);
+    ssaoResult = globalImages->ImageFromFunction("SSAO ColorBuffer", CreateSSAOColorBuffer);
+    ssaoBlurred = globalImages->ImageFromFunction("SSAO Blurred", CreateSSAOColorBuffer);
 	ssaoNoise = globalImages->ImageFromFunction( "SSAO Noise", CreateSSAONoiseTexture );
+
 	qglGenFramebuffers(1, &ssaoFBO);
 	qglBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
-	qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoColorBuffer->texnum, 0);
+    qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoResult->texnum, 0);
+	qglGenFramebuffers(1, &ssaoBlurFBO);
+	qglBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
+	qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoBlurred->texnum, 0);
+    qglBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 	ssaoShader = programManager->Find( "ssao" );
 	if( ssaoShader == nullptr ) {
 		ssaoShader = programManager->LoadFromFiles( "ssao", "ssao.vert.glsl", "ssao.frag.glsl" );
 	}
-	qglBindFramebuffer(GL_FRAMEBUFFER, 0);
+	ssaoShader->Activate();
+	AOUniforms *aoUniforms = ssaoShader->GetUniformGroup<AOUniforms>();
+	aoUniforms->depthTexture.Set(0);
+	aoUniforms->noiseTexture.Set(1);
+
+    ssaoBlurShader = programManager->Find( "ssao_blur" );
+    if( ssaoBlurShader == nullptr ) {
+        ssaoBlurShader = programManager->LoadFromFiles( "ssao_blur", "ssao.vert.glsl", "ssao_blur.frag.glsl" );
+    }
+    ssaoBlurShader->Activate();
+    BlurUniforms *blurUniforms = ssaoBlurShader->GetUniformGroup<BlurUniforms>();
+    blurUniforms->ssaoTexture.Set(0);
 }
 
 void AmbientOcclusion::Shutdown() {
 	if (ssaoFBO != 0) {
 		qglDeleteFramebuffers(1, &ssaoFBO);
 	}
-	if (ssaoColorBuffer != nullptr) {
-		ssaoColorBuffer->PurgeImage();
+	if (ssaoBlurFBO != 0) {
+	    qglDeleteFramebuffers(1, &ssaoBlurFBO);
+	}
+	if (ssaoResult != nullptr) {
+		ssaoResult->PurgeImage();
+	}
+	if (ssaoBlurred != nullptr) {
+	    ssaoBlurred->PurgeImage();
 	}
 	if (ssaoNoise != nullptr) {
 		ssaoNoise->PurgeImage();
@@ -104,37 +134,53 @@ void AmbientOcclusion::Shutdown() {
 extern GLuint fboPrimary;
 extern bool primaryOn;
 void AmbientOcclusion::ComputeSSAOFromDepth() {
+    GL_PROFILE("SSAO");
+
 	if( ssaoFBO == 0 ) {
 		Init();
 	}
 
-	GL_PROFILE( "SSAO" );
+    SSAOPass();
+	BlurPass();
 
-	qglBindFramebuffer( GL_FRAMEBUFFER, ssaoFBO );
-	qglClear(GL_COLOR_BUFFER_BIT);
-	GL_SelectTexture( 0 );
-	globalImages->currentDepthImage->Bind();
-	GL_SelectTexture( 1 );
-	ssaoNoise->Bind();
-
-	ssaoShader->Activate();
-	AOUniforms *uniforms = ssaoShader->GetUniformGroup<AOUniforms>();
-	uniforms->depthTexture.Set(0);
-	uniforms->noiseTexture.Set(1);
-	uniforms->screenResolution.Set(ssaoColorBuffer->uploadWidth, ssaoColorBuffer->uploadHeight);
-	uniforms->sampleRadius.Set(r_ssao_radius.GetFloat());
-	uniforms->depthBias.Set(r_ssao_bias.GetFloat());
-	uniforms->area.Set(r_ssao_area.GetFloat());
-	uniforms->baseValue.Set(r_ssao_base.GetFloat());
-	uniforms->totalStrength.Set(r_ssao_strength.GetFloat());
-
-	RB_DrawFullScreenQuad();
-
-	// FIXME: this is a bit hacky
+    // FIXME: this is a bit hacky
 	qglBindFramebuffer( GL_FRAMEBUFFER, primaryOn ? fboPrimary : 0 );
 }
 
+void AmbientOcclusion::SSAOPass() {
+    GL_PROFILE("CalculateSSAO");
+
+    qglBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
+    qglClear(GL_COLOR_BUFFER_BIT);
+    GL_SelectTexture( 0 );
+    globalImages->currentDepthImage->Bind();
+    GL_SelectTexture( 1 );
+    ssaoNoise->Bind();
+
+    ssaoShader->Activate();
+    AOUniforms *uniforms = ssaoShader->GetUniformGroup<AOUniforms>();
+    uniforms->screenResolution.Set(ssaoResult->uploadWidth, ssaoResult->uploadHeight);
+    uniforms->sampleRadius.Set(r_ssao_radius.GetFloat());
+    uniforms->depthBias.Set(r_ssao_bias.GetFloat());
+    uniforms->area.Set(r_ssao_area.GetFloat());
+    uniforms->baseValue.Set(r_ssao_base.GetFloat());
+    uniforms->totalStrength.Set(r_ssao_strength.GetFloat());
+
+    RB_DrawFullScreenQuad();
+}
+
+void AmbientOcclusion::BlurPass() {
+    GL_PROFILE("BlurSSAO");
+
+    qglBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
+    qglClear(GL_COLOR_BUFFER_BIT);
+    GL_SelectTexture( 0 );
+    ssaoResult->Bind();
+    ssaoBlurShader->Activate();
+    RB_DrawFullScreenQuad();
+}
+
 void AmbientOcclusion::BindSSAOTexture(int index) {
-	GL_SelectTexture(index);
-	ssaoColorBuffer->Bind();
+    GL_SelectTexture(index);
+    ssaoBlurred->Bind();
 }
