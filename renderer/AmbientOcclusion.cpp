@@ -23,13 +23,14 @@
 #include "GLSLProgram.h"
 #include "Profiling.h"
 #include "GLSLUniforms.h"
+#include "glsl.h"
 
 idCVar r_ssao( "r_ssao", "0", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Enable screen space ambient occlusion" );
-idCVar r_ssao_radius( "r_ssao_radius", "0.001", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Screen space sample radius" );
-idCVar r_ssao_bias( "r_ssao_bias", "0.000001", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Min depth difference to count for occlusion" );
-idCVar r_ssao_area( "r_ssao_area", "0.0075", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "SSAO area" );
-idCVar r_ssao_strength( "r_ssao_strength", "1", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "SSAO strength" );
+idCVar r_ssao_radius( "r_ssao_radius", "6", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "View space sample radius" );
+idCVar r_ssao_bias( "r_ssao_bias", "0.025", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Min depth difference to count for occlusion" );
+idCVar r_ssao_power( "r_ssao_power", "4", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "SSAO exponential factor" );
 idCVar r_ssao_base( "r_ssao_base", "0.1", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Min value" );
+idCVar r_ssao_kernelSize( "r_ssao_kernelSize", "16", CVAR_INTEGER|CVAR_RENDERER|CVAR_ARCHIVE, "Size of sample kernel (max 128) ");
 
 AmbientOcclusion ambientOcclusionImpl;
 AmbientOcclusion *ambientOcclusion = &ambientOcclusionImpl;
@@ -43,9 +44,10 @@ namespace {
 		DEFINE_UNIFORM( vec2, screenResolution )
 		DEFINE_UNIFORM( float, sampleRadius )
 		DEFINE_UNIFORM( float, depthBias )
-		DEFINE_UNIFORM( float, area )
-		DEFINE_UNIFORM( float, totalStrength )
 		DEFINE_UNIFORM( float, baseValue )
+		DEFINE_UNIFORM( vec3, sampleKernel )
+		DEFINE_UNIFORM( int, kernelSize )
+		DEFINE_UNIFORM( float, power )
 	};
 
 	struct BlurUniforms : GLSLUniformGroup {
@@ -53,6 +55,37 @@ namespace {
 
 	    DEFINE_UNIFORM( sampler, ssaoTexture )
 	};
+
+	const int MAX_KERNEL_SIZE = 128;
+
+	void CreateHemisphereSampleKernel(AOUniforms *uniforms) {
+		idRandom rnd( 54321 );
+		idList<idVec3> kernel;
+		for (int i = 0; i < MAX_KERNEL_SIZE; ++i) {
+			// x and y in [-1, 1], z in [0, 1] to stay in the hemisphere
+			idVec3 sample( rnd.CRandomFloat(), rnd.CRandomFloat(), rnd.RandomFloat() );
+			sample.Normalize();
+			// ensure a sample distribution closer to the origin
+			float scale = rnd.RandomFloat();
+			scale = Lerp(0.1f, 1.0f, scale * scale);
+			kernel.Append(sample * scale);
+		}
+		uniforms->sampleKernel.SetArray(MAX_KERNEL_SIZE, kernel[0].ToFloatPtr());
+	}
+
+	void LoadSSAOShader( GLSLProgram *ssaoShader ) {
+		ssaoShader->Init();
+		ssaoShader->AttachVertexShader( "ssao.vert.glsl" );
+		ssaoShader->AttachFragmentShader( "ssao.frag.glsl" );
+		Attributes::Default::Bind( ssaoShader );
+		ssaoShader->Link();
+		ssaoShader->Activate();
+		AOUniforms *uniforms = ssaoShader->GetUniformGroup<AOUniforms>();
+		uniforms->depthTexture.Set( 0 );
+		uniforms->noiseTexture.Set( 1 );
+		CreateHemisphereSampleKernel( uniforms );
+		ssaoShader->Deactivate();
+	}
 
 	void CreateSSAOColorBuffer(idImage *image) {
 		image->type = TT_2D;
@@ -97,12 +130,13 @@ void AmbientOcclusion::Init() {
 
 	ssaoShader = programManager->Find( "ssao" );
 	if( ssaoShader == nullptr ) {
-		ssaoShader = programManager->LoadFromFiles( "ssao", "ssao.vert.glsl", "ssao.frag.glsl" );
+		ssaoShader = programManager->LoadFromGenerator( "ssao", LoadSSAOShader );
 	}
 	ssaoShader->Activate();
 	AOUniforms *aoUniforms = ssaoShader->GetUniformGroup<AOUniforms>();
 	aoUniforms->depthTexture.Set(0);
 	aoUniforms->noiseTexture.Set(1);
+	CreateHemisphereSampleKernel(aoUniforms);
 
     ssaoBlurShader = programManager->Find( "ssao_blur" );
     if( ssaoBlurShader == nullptr ) {
@@ -159,12 +193,12 @@ void AmbientOcclusion::SSAOPass() {
 
     ssaoShader->Activate();
     AOUniforms *uniforms = ssaoShader->GetUniformGroup<AOUniforms>();
-    uniforms->screenResolution.Set(ssaoResult->uploadWidth, ssaoResult->uploadHeight);
     uniforms->sampleRadius.Set(r_ssao_radius.GetFloat());
     uniforms->depthBias.Set(r_ssao_bias.GetFloat());
-    uniforms->area.Set(r_ssao_area.GetFloat());
     uniforms->baseValue.Set(r_ssao_base.GetFloat());
-    uniforms->totalStrength.Set(r_ssao_strength.GetFloat());
+    uniforms->power.Set(r_ssao_power.GetFloat());
+    int kernelSize = std::max(1, std::min(MAX_KERNEL_SIZE, r_ssao_kernelSize.GetInteger()));
+    uniforms->kernelSize.Set(kernelSize);
 
     RB_DrawFullScreenQuad();
 }

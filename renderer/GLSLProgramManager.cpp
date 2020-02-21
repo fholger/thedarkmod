@@ -17,7 +17,6 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "GLSLProgramManager.h"
 #include "GLSLProgram.h"
 #include "glsl.h"
-#include "AmbientOcclusion.h"
 
 GLSLProgramManager programManagerInstance;
 GLSLProgramManager *programManager = &programManagerInstance;
