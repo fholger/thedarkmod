@@ -40,7 +40,7 @@ namespace {
 
 		DEFINE_UNIFORM( sampler, depthTexture )
 		DEFINE_UNIFORM( sampler, noiseTexture )
-		DEFINE_UNIFORM( vec2, noiseScale )
+		DEFINE_UNIFORM( vec2, screenResolution )
 		DEFINE_UNIFORM( float, sampleRadius )
 		DEFINE_UNIFORM( float, depthBias )
 		DEFINE_UNIFORM( float, area )
@@ -57,7 +57,7 @@ namespace {
 		idRandom rnd( 12345 );
 		idList<idVec3> noise;
 		for (int i = 0; i < 16; ++i) {
-			idVec3 randomVec( rnd.CRandomFloat(), rnd.CRandomFloat(), rnd.CRandomFloat() );
+			idVec3 randomVec( rnd.RandomFloat(), rnd.RandomFloat(), rnd.RandomFloat() );
 			noise.Append( randomVec );
 		}
 		image->type = TT_2D;
@@ -121,7 +121,7 @@ void AmbientOcclusion::ComputeSSAOFromDepth() {
 	AOUniforms *uniforms = ssaoShader->GetUniformGroup<AOUniforms>();
 	uniforms->depthTexture.Set(0);
 	uniforms->noiseTexture.Set(1);
-	uniforms->noiseScale.Set(ssaoColorBuffer->uploadWidth / 4.f, ssaoColorBuffer->uploadHeight / 4.f);
+	uniforms->screenResolution.Set(ssaoColorBuffer->uploadWidth, ssaoColorBuffer->uploadHeight);
 	uniforms->sampleRadius.Set(r_ssao_radius.GetFloat());
 	uniforms->depthBias.Set(r_ssao_bias.GetFloat());
 	uniforms->area.Set(r_ssao_area.GetFloat());

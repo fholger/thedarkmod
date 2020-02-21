@@ -9,7 +9,7 @@ out vec4 FragColor;
 
 uniform sampler2D u_depthTexture;
 uniform sampler2D u_noiseTexture;
-uniform vec2 u_noiseScale;
+uniform vec2 u_screenResolution;
 uniform float u_sampleRadius;
 uniform float u_depthBias;
 uniform float u_area;
@@ -17,17 +17,16 @@ uniform float u_totalStrength;
 uniform float u_baseValue;
 
 
-float depthAt(vec2 texCoord) {
-	return 2 * texture(u_depthTexture, texCoord).r - 1;
-	return texture(u_depthTexture, texCoord).r;
+float depthAt(vec3 position) {
+	return 2 * texture(u_depthTexture, 0.5 + 0.5 * position.xy).r - 1;
 }
 
+vec3 offsets[2] = vec3[](vec3(1.0 / u_screenResolution.x, 0, 0), vec3(0, 1.0 / u_screenResolution.y, 0));
+
 vec3 approximateScreenSpaceNormal(vec3 position) {
-	const vec2 offsets[2] = vec2[](vec2(0, 0.0015), vec2(0.0015, 0));
-	vec3 p1 = vec3(offsets[0], depthAt(position.xy + offsets[0]) - position.z);
-	vec3 p2 = vec3(offsets[1], depthAt(position.xy + offsets[1]) - position.z);
-	vec3 normal = cross(p1, p2);
-	normal.z = -normal.z;
+	vec3 a = vec3(offsets[0].xy, depthAt(position + offsets[0]) - position.z);
+	vec3 b = vec3(offsets[1].xy, depthAt(position + offsets[1]) - position.z);
+	vec3 normal = cross(b, a);
 	return normalize(normal);
 }
 
@@ -44,19 +43,19 @@ vec3( 0.0352,-0.0631, 0.5460), vec3(-0.4776, 0.2847,-0.0271)
 );
 
 void main() {
-	float depth = depthAt(var_TexCoord);
-	vec3 position = vec3(var_TexCoord, depth);
+	vec3 position = vec3(-1 + 2 * var_TexCoord, 0);
+	position.z = depthAt(position);
 	vec3 normal = approximateScreenSpaceNormal(position);
 
-	vec3 random = normalize(texture(u_noiseTexture, var_TexCoord * u_noiseScale).rgb);
+	vec3 random = normalize(-1 + 2 * texture(u_noiseTexture, var_TexCoord * u_screenResolution / 4).rgb);
 
 	float occlusion = 0.0;
-	float radiusOverDepth = u_sampleRadius / (0.5*depth+0.5);
+	float radiusOverDepth = u_sampleRadius / (0.5*position.z+0.5);
 	for (int i = 0; i < samples; i++) {
-		vec3 ray = radiusOverDepth * reflect(sample_sphere[i], random);
+		vec3 ray = radiusOverDepth * reflect(sample_sphere[i], normal);
 		vec3 hemisphereRay = position + sign(dot(ray, normal)) * ray;
 
-		float occluderDepth = depthAt(clamp(hemisphereRay.xy, 0, 1));
+		float occluderDepth = depthAt(hemisphereRay);
 		float difference = hemisphereRay.z - occluderDepth;
 
 		occlusion += step(u_depthBias, difference) * (1.0 - smoothstep(u_depthBias, u_area, difference));
