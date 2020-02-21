@@ -5,6 +5,7 @@
 // inspired by: http://theorangeduck.com/page/pure-depth-ssao
 
 in vec2 var_TexCoord;
+in vec2 var_ViewRay;
 out vec4 FragColor;
 
 uniform sampler2D u_depthTexture;
@@ -16,17 +17,30 @@ uniform float u_area;
 uniform float u_totalStrength;
 uniform float u_baseValue;
 
+uniform block {
+	mat4 u_projectionMatrix;
+};
 
-float depthAt(vec3 position) {
-	return 2 * texture(u_depthTexture, 0.5 + 0.5 * position.xy).r - 1;
+float lookupDepth(vec2 texCoord) {
+	return texture(u_depthTexture, texCoord).r;
 }
 
-vec3 offsets[2] = vec3[](vec3(1.0 / u_screenResolution.x, 0, 0), vec3(0, 1.0 / u_screenResolution.y, 0));
+float viewSpaceZ(vec2 clipXY) {
+	return -0.5 * u_projectionMatrix[3][2] / (lookupDepth(0.5 + 0.5 * clipXY) - 1);
+}
 
-vec3 approximateScreenSpaceNormal(vec3 position) {
-	vec3 a = vec3(offsets[0].xy, depthAt(position + offsets[0]) - position.z);
-	vec3 b = vec3(offsets[1].xy, depthAt(position + offsets[1]) - position.z);
-	vec3 normal = cross(b, a);
+vec3 viewSpacePos(vec3 viewPos) {
+	vec4 clipPos = u_projectionMatrix * vec4(viewPos, 1);
+	float z = viewSpaceZ(clipPos.xy / clipPos.w);
+	return vec3(viewPos.xy, z);
+}
+
+vec3 offsets[2] = vec3[](vec3(1, 0, 0), vec3(0, 1, 0));
+
+vec3 approximateViewSpaceNormal(vec3 position) {
+	vec3 a = viewSpacePos(position + offsets[0]) - position;
+	vec3 b = viewSpacePos(position + offsets[1]) - position;
+	vec3 normal = cross(a, b);
 	return normalize(normal);
 }
 
@@ -43,22 +57,23 @@ vec3( 0.0352,-0.0631, 0.5460), vec3(-0.4776, 0.2847,-0.0271)
 );
 
 void main() {
-	vec3 position = vec3(-1 + 2 * var_TexCoord, 0);
-	position.z = depthAt(position);
-	vec3 normal = approximateScreenSpaceNormal(position);
+	vec3 position;
+	position.z = viewSpaceZ(-1 + 2 * var_TexCoord);
+	position.xy = var_ViewRay * position.z;
+	vec3 normal = approximateViewSpaceNormal(position);
 
 	vec3 random = normalize(-1 + 2 * texture(u_noiseTexture, var_TexCoord * u_screenResolution / 4).rgb);
 
 	float occlusion = 0.0;
 	float radiusOverDepth = u_sampleRadius / (0.5*position.z+0.5);
 	for (int i = 0; i < samples; i++) {
-		vec3 ray = radiusOverDepth * reflect(sample_sphere[i], normal);
+		vec3 ray = reflect(sample_sphere[i], random);
 		vec3 hemisphereRay = position + sign(dot(ray, normal)) * ray;
 
-		float occluderDepth = depthAt(hemisphereRay);
-		float difference = hemisphereRay.z - occluderDepth;
+		float occluderZ = viewSpacePos(hemisphereRay).z;
+		float difference = occluderZ - hemisphereRay.z;
 
-		occlusion += step(u_depthBias, difference) * (1.0 - smoothstep(u_depthBias, u_area, difference));
+		occlusion += step(u_depthBias, difference); // * (1.0 - smoothstep(u_depthBias, u_area, difference));
 	}
 
 	float ao = clamp(u_baseValue + 1.0 - u_totalStrength * occlusion * (1.0 / samples), 0, 1);
