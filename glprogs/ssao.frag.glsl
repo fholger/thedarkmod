@@ -6,7 +6,7 @@
 
 in vec2 var_TexCoord;
 in vec2 var_ViewRay;
-out vec4 FragColor;
+out float FragColor;
 
 uniform sampler2D u_depthTexture;
 uniform sampler2D u_noiseTexture;
@@ -77,7 +77,5 @@ void main() {
 	}
 
 	float ao = clamp(u_baseValue + 1.0 - occlusion / u_kernelSize, 0, 1);
-	ao = pow(ao, u_power);
-	FragColor = vec4(ao, ao, ao, 1);
-	//FragColor = vec4(0.5 * normal + 0.5, 1);
+	FragColor = pow(ao, u_power);
 }

@@ -93,7 +93,7 @@ namespace {
 		image->type = TT_2D;
 		GLuint curWidth = r_fboResolution.GetFloat() * glConfig.vidWidth;
 		GLuint curHeight = r_fboResolution.GetFloat() * glConfig.vidHeight;
-		image->GenerateAttachment(curWidth, curHeight, GL_COLOR);
+		image->GenerateAttachment(curWidth, curHeight, GL_RED);
 	}
 
 	void CreateSSAONoiseTexture(idImage *image) {
