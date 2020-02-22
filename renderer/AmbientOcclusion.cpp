@@ -32,6 +32,8 @@ idCVar r_ssao_power( "r_ssao_power", "4", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE,
 idCVar r_ssao_base( "r_ssao_base", "0.1", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Min value" );
 idCVar r_ssao_kernelSize( "r_ssao_kernelSize", "16", CVAR_INTEGER|CVAR_RENDERER|CVAR_ARCHIVE, "Size of sample kernel (max 128) ");
 
+extern idCVar r_fboResolution;
+
 AmbientOcclusion ambientOcclusionImpl;
 AmbientOcclusion *ambientOcclusion = &ambientOcclusionImpl;
 
@@ -89,7 +91,9 @@ namespace {
 
 	void CreateSSAOColorBuffer(idImage *image) {
 		image->type = TT_2D;
-		image->GenerateAttachment(r_customWidth.GetInteger(), r_customHeight.GetInteger(), GL_COLOR);
+		GLuint curWidth = r_fboResolution.GetFloat() * glConfig.vidWidth;
+		GLuint curHeight = r_fboResolution.GetFloat() * glConfig.vidHeight;
+		image->GenerateAttachment(curWidth, curHeight, GL_COLOR);
 	}
 
 	void CreateSSAONoiseTexture(idImage *image) {
@@ -117,7 +121,9 @@ AmbientOcclusion::AmbientOcclusion() : ssaoFBO(0), ssaoBlurFBO(0), ssaoResult(nu
 
 void AmbientOcclusion::Init() {
     ssaoResult = globalImages->ImageFromFunction("SSAO ColorBuffer", CreateSSAOColorBuffer);
+    ssaoResult->ActuallyLoadImage();
     ssaoBlurred = globalImages->ImageFromFunction("SSAO Blurred", CreateSSAOColorBuffer);
+    ssaoBlurred->ActuallyLoadImage();
 	ssaoNoise = globalImages->ImageFromFunction( "SSAO Noise", CreateSSAONoiseTexture );
 
 	qglGenFramebuffers(1, &ssaoFBO);
@@ -150,9 +156,11 @@ void AmbientOcclusion::Init() {
 void AmbientOcclusion::Shutdown() {
 	if (ssaoFBO != 0) {
 		qglDeleteFramebuffers(1, &ssaoFBO);
+		ssaoFBO = 0;
 	}
 	if (ssaoBlurFBO != 0) {
 	    qglDeleteFramebuffers(1, &ssaoBlurFBO);
+	    ssaoBlurFBO = 0;
 	}
 	if (ssaoResult != nullptr) {
 		ssaoResult->PurgeImage();
@@ -168,7 +176,12 @@ void AmbientOcclusion::Shutdown() {
 extern GLuint fboPrimary;
 extern bool primaryOn;
 void AmbientOcclusion::ComputeSSAOFromDepth() {
-    GL_PROFILE("SSAO");
+    GL_PROFILE("AmbientOcclusionStage");
+
+    if( ssaoFBO != 0 && ( globalImages->currentDepthImage->uploadWidth != ssaoResult->uploadWidth || globalImages->currentDepthImage->uploadHeight != ssaoResult->uploadHeight ) ) {
+    	// resolution changed, need to recreate our resources
+    	Shutdown();
+    }
 
 	if( ssaoFBO == 0 ) {
 		Init();
@@ -177,12 +190,12 @@ void AmbientOcclusion::ComputeSSAOFromDepth() {
     SSAOPass();
 	BlurPass();
 
-    // FIXME: this is a bit hacky
+    // FIXME: this is a bit hacky, needs better FBO control
 	qglBindFramebuffer( GL_FRAMEBUFFER, primaryOn ? fboPrimary : 0 );
 }
 
 void AmbientOcclusion::SSAOPass() {
-    GL_PROFILE("CalculateSSAO");
+    GL_PROFILE("SSAOPass");
 
     qglBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
     qglClear(GL_COLOR_BUFFER_BIT);
@@ -204,7 +217,7 @@ void AmbientOcclusion::SSAOPass() {
 }
 
 void AmbientOcclusion::BlurPass() {
-    GL_PROFILE("BlurSSAO");
+    GL_PROFILE("BlurPass");
 
     qglBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
     qglClear(GL_COLOR_BUFFER_BIT);
