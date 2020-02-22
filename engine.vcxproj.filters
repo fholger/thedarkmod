@@ -1258,7 +1258,7 @@
     <ClInclude Include="renderer\ImmediateRendering.h">
       <Filter>Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\AmbientOcclusion.h">
+    <ClInclude Include="renderer\AmbientOcclusionStage.h">
       <Filter>Renderer</Filter>
     </ClInclude>
   </ItemGroup>
@@ -2968,7 +2968,7 @@
     <ClCompile Include="renderer\ImmediateRendering.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\AmbientOcclusion.cpp">
+    <ClCompile Include="renderer\AmbientOcclusionStage.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
   </ItemGroup>

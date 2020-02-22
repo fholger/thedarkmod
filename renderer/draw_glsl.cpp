@@ -35,7 +35,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "Profiling.h"
 #include "GLSLProgram.h"
 #include "GLSLProgramManager.h"
-#include "AmbientOcclusion.h"
+#include "AmbientOcclusionStage.h"
 
 #if defined(_MSC_VER) && _MSC_VER >= 1800 && !defined(DEBUG)
 //#pragma optimize("t", off) // duzenko: used in release to enforce breakpoints in inlineable code. Please do not remove

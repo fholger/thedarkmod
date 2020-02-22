@@ -22,7 +22,7 @@
 #include "GLSLProgram.h"
 #include "GLSLUniforms.h"
 #include "GLSLProgramManager.h"
-#include "AmbientOcclusion.h"
+#include "AmbientOcclusionStage.h"
 
 struct CubemapUniforms : GLSLUniformGroup {
 	UNIFORM_GROUP_DEF( CubemapUniforms );

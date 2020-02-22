@@ -16,7 +16,7 @@
 #include "precompiled.h"
 #pragma hdrstop
 
-#include "AmbientOcclusion.h"
+#include "AmbientOcclusionStage.h"
 #include "Image.h"
 #include "tr_local.h"
 #include "GLSLProgramManager.h"
@@ -26,16 +26,16 @@
 #include "glsl.h"
 
 idCVar r_ssao( "r_ssao", "0", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Enable screen space ambient occlusion" );
-idCVar r_ssao_radius( "r_ssao_radius", "6", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "View space sample radius" );
-idCVar r_ssao_bias( "r_ssao_bias", "0.025", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Min depth difference to count for occlusion" );
-idCVar r_ssao_power( "r_ssao_power", "4", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "SSAO exponential factor" );
-idCVar r_ssao_base( "r_ssao_base", "0.1", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Min value" );
-idCVar r_ssao_kernelSize( "r_ssao_kernelSize", "16", CVAR_INTEGER|CVAR_RENDERER|CVAR_ARCHIVE, "Size of sample kernel (max 128) ");
+idCVar r_ssao_radius( "r_ssao_radius", "16", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "View space sample radius - larger values provide a softer, spread effect, but risk causing unwanted halo shadows around objects" );
+idCVar r_ssao_bias( "r_ssao_bias", "0.025", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Min depth difference to count for occlusion, used to avoid some acne effects" );
+idCVar r_ssao_power( "r_ssao_power", "4", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "SSAO exponential factor, the higher the value, the stronger the effect" );
+idCVar r_ssao_base( "r_ssao_base", "0.2", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Minimum baseline visibility below which AO cannot drop" );
+idCVar r_ssao_kernelSize( "r_ssao_kernelSize", "16", CVAR_INTEGER|CVAR_RENDERER|CVAR_ARCHIVE, "Size of sample kernel (max 128) - higher values will impact performance!");
 
 extern idCVar r_fboResolution;
 
-AmbientOcclusion ambientOcclusionImpl;
-AmbientOcclusion *ambientOcclusion = &ambientOcclusionImpl;
+AmbientOcclusionStage ambientOcclusionImpl;
+AmbientOcclusionStage *ambientOcclusion = &ambientOcclusionImpl;
 
 namespace {
 	struct AOUniforms : GLSLUniformGroup {
@@ -61,6 +61,8 @@ namespace {
 	const int MAX_KERNEL_SIZE = 128;
 
 	void CreateHemisphereSampleKernel(AOUniforms *uniforms) {
+		// Create random vectors within a unit hemisphere. Used in the SSAO shader
+		// to sample the surrounding geometry.
 		idRandom rnd( 54321 );
 		idList<idVec3> kernel;
 		for (int i = 0; i < MAX_KERNEL_SIZE; ++i) {
@@ -97,6 +99,9 @@ namespace {
 	}
 
 	void CreateSSAONoiseTexture(idImage *image) {
+		// Create a small noise texture to introduce some randomness in the SSAO
+		// sampling. Allows us to get away with fewer samples by blurring over the
+		// randomness afterwards.
 		idRandom rnd( 12345 );
 		idList<idVec3> noise;
 		for (int i = 0; i < 16; ++i) {
@@ -116,10 +121,10 @@ namespace {
 	}
 }
 
-AmbientOcclusion::AmbientOcclusion() : ssaoFBO(0), ssaoBlurFBO(0), ssaoResult(nullptr), ssaoBlurred(nullptr), ssaoNoise(nullptr), ssaoShader(nullptr) {
+AmbientOcclusionStage::AmbientOcclusionStage() : ssaoFBO(0), ssaoBlurFBO(0), ssaoResult(nullptr), ssaoBlurred(nullptr), ssaoNoise(nullptr), ssaoShader(nullptr) {
 }
 
-void AmbientOcclusion::Init() {
+void AmbientOcclusionStage::Init() {
     ssaoResult = globalImages->ImageFromFunction("SSAO ColorBuffer", CreateSSAOColorBuffer);
     ssaoResult->ActuallyLoadImage();
     ssaoBlurred = globalImages->ImageFromFunction("SSAO Blurred", CreateSSAOColorBuffer);
@@ -139,21 +144,14 @@ void AmbientOcclusion::Init() {
 		ssaoShader = programManager->LoadFromGenerator( "ssao", LoadSSAOShader );
 	}
 	ssaoShader->Activate();
-	AOUniforms *aoUniforms = ssaoShader->GetUniformGroup<AOUniforms>();
-	aoUniforms->depthTexture.Set(0);
-	aoUniforms->noiseTexture.Set(1);
-	CreateHemisphereSampleKernel(aoUniforms);
 
     ssaoBlurShader = programManager->Find( "ssao_blur" );
     if( ssaoBlurShader == nullptr ) {
         ssaoBlurShader = programManager->LoadFromFiles( "ssao_blur", "ssao.vert.glsl", "ssao_blur.frag.glsl" );
     }
-    ssaoBlurShader->Activate();
-    BlurUniforms *blurUniforms = ssaoBlurShader->GetUniformGroup<BlurUniforms>();
-    blurUniforms->ssaoTexture.Set(0);
 }
 
-void AmbientOcclusion::Shutdown() {
+void AmbientOcclusionStage::Shutdown() {
 	if (ssaoFBO != 0) {
 		qglDeleteFramebuffers(1, &ssaoFBO);
 		ssaoFBO = 0;
@@ -175,7 +173,7 @@ void AmbientOcclusion::Shutdown() {
 
 extern GLuint fboPrimary;
 extern bool primaryOn;
-void AmbientOcclusion::ComputeSSAOFromDepth() {
+void AmbientOcclusionStage::ComputeSSAOFromDepth() {
     GL_PROFILE("AmbientOcclusionStage");
 
     if( ssaoFBO != 0 && ( globalImages->currentDepthImage->uploadWidth != ssaoResult->uploadWidth || globalImages->currentDepthImage->uploadHeight != ssaoResult->uploadHeight ) ) {
@@ -194,7 +192,7 @@ void AmbientOcclusion::ComputeSSAOFromDepth() {
 	qglBindFramebuffer( GL_FRAMEBUFFER, primaryOn ? fboPrimary : 0 );
 }
 
-void AmbientOcclusion::SSAOPass() {
+void AmbientOcclusionStage::SSAOPass() {
     GL_PROFILE("SSAOPass");
 
     qglBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
@@ -216,7 +214,7 @@ void AmbientOcclusion::SSAOPass() {
     RB_DrawFullScreenQuad();
 }
 
-void AmbientOcclusion::BlurPass() {
+void AmbientOcclusionStage::BlurPass() {
     GL_PROFILE("BlurPass");
 
     qglBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
@@ -227,7 +225,7 @@ void AmbientOcclusion::BlurPass() {
     RB_DrawFullScreenQuad();
 }
 
-void AmbientOcclusion::BindSSAOTexture(int index) {
+void AmbientOcclusionStage::BindSSAOTexture(int index) {
     GL_SelectTexture(index);
     ssaoBlurred->Bind();
 }

@@ -17,9 +17,9 @@
 
 extern idCVar r_ssao;
 
-class AmbientOcclusion {
+class AmbientOcclusionStage {
 public:
-	AmbientOcclusion();
+	AmbientOcclusionStage();
 
 	void Init();
 	void Shutdown();
@@ -41,4 +41,4 @@ private:
     void BlurPass();
 };
 
-extern AmbientOcclusion *ambientOcclusion;
+extern AmbientOcclusionStage *ambientOcclusion;

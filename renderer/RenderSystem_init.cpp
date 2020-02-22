@@ -20,12 +20,12 @@
 #include "FrameBuffer.h"
 #include "glsl.h"
 #include "GLSLProgramManager.h"
-#include "AmbientOcclusion.h"
+#include "AmbientOcclusionStage.h"
 
 // Vista OpenGL wrapper check
 #ifdef _WIN32
 #include "../sys/win32/win_local.h"
-#include "AmbientOcclusion.h"
+#include "AmbientOcclusionStage.h"
 
 #endif
 

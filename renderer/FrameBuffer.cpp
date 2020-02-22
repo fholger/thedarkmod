@@ -19,7 +19,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "FrameBuffer.h"
 #include "glsl.h"
 #include "GLSLProgramManager.h"
-#include "AmbientOcclusion.h"
+#include "AmbientOcclusionStage.h"
 
 // all false at start
 bool primaryOn = false, shadowOn = false;
