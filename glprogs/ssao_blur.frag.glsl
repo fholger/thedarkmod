@@ -1,7 +1,10 @@
 #version 140
-out float FragColor;
+
+// simple blur shader which removes the random noise pattern introduced
+// in the SSAO pass by the noise texture
 
 in vec2 var_TexCoord;
+out float FragColor;
 
 uniform sampler2D u_ssaoTexture;
 

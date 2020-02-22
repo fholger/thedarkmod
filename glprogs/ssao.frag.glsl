@@ -1,15 +1,21 @@
 #version 140
 
-// this is an SSAO implementation working purely from the depth buffer
-// all calculations are done in screen space
-// inspired by: http://theorangeduck.com/page/pure-depth-ssao
+// This is an SSAO implementation working purely from the depth buffer.
+// The implementation is inspired by: https://learnopengl.com/Advanced-Lighting/SSAO
+//
+// For each texel in the output, its view space position and normal are inferred
+// from the depth buffer, then the surrounding geometry is probed with a small
+// kernel of samples distributed over a hemisphere aligned with the normal.
+// Each sample is compared with the actual depth in the depth buffer, and if it is
+// occluded, it contributes to this texel's AO term.
 
 in vec2 var_TexCoord;
-in vec2 var_ViewRay;
 out float FragColor;
 
 uniform sampler2D u_depthTexture;
 uniform sampler2D u_noiseTexture;
+
+// Adjustable SSAO parameters
 uniform float u_sampleRadius;
 uniform float u_depthBias;
 uniform float u_baseValue;
@@ -34,7 +40,7 @@ vec3 texCoordToViewPos(vec2 texCoord) {
 vec2 depthTexSize = vec2(textureSize(u_depthTexture, 0));
 vec2 texOffsets[] = vec2[](vec2(1/depthTexSize.x, 0), vec2(0, 1/depthTexSize.y));
 
-// approximate the current texel's normal in view space by projecting two adjacent texels to view space and
+// approximate the current texel's normal in view space by projecting two adjacent texels to view space
 // to calculate tangent vectors, which can then be crossed for a normal
 vec3 approximateViewSpaceNormal(vec3 position, vec2 texCoords) {
 	vec3 a = texCoordToViewPos(texCoords + texOffsets[0]) - position;
@@ -51,27 +57,37 @@ float occluderZAtViewPos(vec3 viewPos) {
 	return nearZ / (depth - 1.999/2);
 }
 
-uniform int u_kernelSize;
+// the actual sample kernel, samples should be distributed over the unit hemisphere with z >= 0
 uniform vec3 u_sampleKernel[128];
+uniform int u_kernelSize;
 
 void main() {
+	// calculate the position and normal of the current texel in view space
 	vec3 position = texCoordToViewPos(var_TexCoord);
 	vec3 normal = approximateViewSpaceNormal(position, var_TexCoord);
 
+	// query a small noise texture to acquire a random rotation vector
 	vec2 noiseScale = vec2(textureSize(u_depthTexture, 0)) / 4;
 	vec3 random = normalize(-1 + 2 * texture(u_noiseTexture, var_TexCoord * noiseScale).rgb);
 
+	// use the random vector to build a randomly rotated tangent space for the current texel
+	// this is done to require fewer samples per texel
 	vec3 tangent = normalize(random - normal * dot(random, normal));
 	vec3 bitangent = cross(normal, tangent);
 	mat3 TBN = mat3(tangent, bitangent, normal);
 
+	// calculate actual occlusion value
 	float occlusion = 0.0;
 	for (int i = 0; i < u_kernelSize; i++) {
+		// determine sample position in view space
 		vec3 samplePos = position + u_sampleRadius * TBN * u_sampleKernel[i];
 
+		// determine actual depth at sample position and compare to sample
 		float occluderZ = occluderZAtViewPos(samplePos);
 		float difference = occluderZ - samplePos.z;
 
+		// introduce a cut-off factor if the depth difference is larger than the radius to avoid unwanted
+		// shadow halos for objects that are actually a distance apart
 		float rangeCheck = smoothstep(0.0, 1.0, u_sampleRadius / abs(position.z - occluderZ));
 		occlusion += step(u_depthBias, difference) * rangeCheck;
 	}
