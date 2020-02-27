@@ -33,15 +33,19 @@ private:
 	GLuint ssaoFBO;
 	GLuint ssaoBlurFBO;
 	GLuint deinterlacedDepthFBO;
-	idImage *deinterlacedDepths[4]{};
+	GLuint normalsFBO;
+	idImage *deinterlacedDepths[4];
+	idImage *normals;
 	idImage *ssaoResult;
 	idImage *ssaoBlurred;
 	idImage *ssaoNoise;
 	GLSLProgram *ssaoShader;
 	GLSLProgram *ssaoBlurShader;
 	GLSLProgram *deinterlaceDepthShader;
+	GLSLProgram *normalsShader;
 
 	void PrepareDepthPass();
+	void PrepareNormalsPass();
 	void SSAOPass();
 	void BlurPass();
 };
