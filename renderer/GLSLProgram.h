@@ -45,6 +45,8 @@ public:
 
 	int GetUniformLocation( const char *uniformName ) const;
 
+	void BindFragDataLocation( const char *name, GLuint colorNumber );
+
 	template<typename Group>
 	Group *GetUniformGroup() {
 		GLSLUniformGroup *& group = FindUniformGroup(typeid(Group));

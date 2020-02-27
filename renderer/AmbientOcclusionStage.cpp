@@ -83,18 +83,34 @@ namespace {
 		uniforms->sampleKernel.SetArray(MAX_KERNEL_SIZE, kernel[ 0 ].ToFloatPtr());
 	}
 
-	void LoadSSAOShader(GLSLProgram *ssaoShader) {
-		ssaoShader->Init();
-		ssaoShader->AttachVertexShader("ssao.vert.glsl");
-		ssaoShader->AttachFragmentShader("ssao.frag.glsl");
-		Attributes::Default::Bind(ssaoShader);
-		ssaoShader->Link();
-		ssaoShader->Activate();
-		AOUniforms *uniforms = ssaoShader->GetUniformGroup<AOUniforms>();
+    void LoadSSAOShader(GLSLProgram *ssaoShader) {
+        ssaoShader->Init();
+        ssaoShader->AttachVertexShader("ssao.vert.glsl");
+        ssaoShader->AttachFragmentShader("ssao.frag.glsl");
+        Attributes::Default::Bind(ssaoShader);
+        ssaoShader->Link();
+        ssaoShader->Activate();
+        AOUniforms *uniforms = ssaoShader->GetUniformGroup<AOUniforms>();
+        uniforms->depthTexture.Set(0);
+        uniforms->noiseTexture.Set(1);
+        CreateHemisphereSampleKernel(uniforms);
+        ssaoShader->Deactivate();
+    }
+
+    void LoadDeinterlaceDepthShader(GLSLProgram *shader) {
+		shader->Init();
+		shader->AttachVertexShader("ssao.vert.glsl");
+		shader->AttachFragmentShader("ssao_depth.frag.glsl");
+		Attributes::Default::Bind(shader);
+		shader->Link();
+		shader->Activate();
+		AOUniforms *uniforms = shader->GetUniformGroup<AOUniforms>();
 		uniforms->depthTexture.Set(0);
-		uniforms->noiseTexture.Set(1);
-		CreateHemisphereSampleKernel(uniforms);
-		ssaoShader->Deactivate();
+		shader->BindFragDataLocation("depth0", 0);
+        shader->BindFragDataLocation("depth1", 1);
+        shader->BindFragDataLocation("depth2", 2);
+        shader->BindFragDataLocation("depth3", 3);
+		shader->Deactivate();
 	}
 
 	void CreateSSAOColorBuffer(idImage *image) {
@@ -102,6 +118,16 @@ namespace {
 		GLuint curWidth = r_fboResolution.GetFloat() * glConfig.vidWidth;
 		GLuint curHeight = r_fboResolution.GetFloat() * glConfig.vidHeight;
 		image->GenerateAttachment(curWidth, curHeight, GL_RED);
+	}
+
+	void CreateDeinterlacedDepthBuffer(idImage *image) {
+	    image->type = TT_2D;
+        image->uploadWidth = r_fboResolution.GetFloat() * glConfig.vidWidth / 2;
+        image->uploadHeight = r_fboResolution.GetFloat() * glConfig.vidHeight / 2;
+        qglGenTextures(1, &image->texnum);
+        qglBindTexture(GL_TEXTURE_2D, image->texnum);
+        qglTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, image->uploadWidth, image->uploadHeight, 0, GL_RED, GL_FLOAT, nullptr);
+        GL_SetDebugLabel( GL_TEXTURE, image->texnum, image->imgName );
 	}
 
 	void CreateSSAONoiseTexture(idImage *image) {
@@ -137,6 +163,9 @@ void AmbientOcclusionStage::Init() {
 	ssaoBlurred = globalImages->ImageFromFunction("SSAO Blurred", CreateSSAOColorBuffer);
 	ssaoBlurred->ActuallyLoadImage();
 	ssaoNoise = globalImages->ImageFromFunction("SSAO Noise", CreateSSAONoiseTexture);
+	for (int i = 0; i < 4; ++i) {
+	    deinterlacedDepths[i] = globalImages->ImageFromFunction("SSAO Depth " + idStr::FormatNumber(i), CreateDeinterlacedDepthBuffer);
+	}
 
 	qglGenFramebuffers(1, &ssaoFBO);
 	qglBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
@@ -145,6 +174,11 @@ void AmbientOcclusionStage::Init() {
 	qglBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
 	qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoBlurred->texnum, 0);
 	qglBindFramebuffer(GL_FRAMEBUFFER, 0);
+	qglGenFramebuffers(1, &deinterlacedDepthFBO);
+	qglBindFramebuffer(GL_FRAMEBUFFER, deinterlacedDepthFBO);
+    for (int i = 0; i < 4; ++i) {
+        qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, deinterlacedDepths[i]->texnum, 0);
+    }
 
 	ssaoShader = programManager->Find("ssao");
 	if ( ssaoShader == nullptr ) {
@@ -152,9 +186,14 @@ void AmbientOcclusionStage::Init() {
 	}
 	ssaoShader->Activate();
 
-	ssaoBlurShader = programManager->Find("ssao_blur");
-	if ( ssaoBlurShader == nullptr ) {
-		ssaoBlurShader = programManager->LoadFromFiles("ssao_blur", "ssao.vert.glsl", "ssao_blur.frag.glsl");
+    ssaoBlurShader = programManager->Find("ssao_blur");
+    if ( ssaoBlurShader == nullptr ) {
+        ssaoBlurShader = programManager->LoadFromFiles("ssao_blur", "ssao.vert.glsl", "ssao_blur.frag.glsl");
+    }
+
+	deinterlaceDepthShader = programManager->Find("ssao_depth");
+	if ( deinterlaceDepthShader == nullptr ) {
+		deinterlaceDepthShader = programManager->LoadFromGenerator("ssao_depth", LoadDeinterlaceDepthShader);
 	}
 }
 
@@ -194,6 +233,7 @@ void AmbientOcclusionStage::ComputeSSAOFromDepth() {
 		Init();
 	}
 
+	PrepareDepthPass();
 	SSAOPass();
 	BlurPass();
 
@@ -238,4 +278,18 @@ void AmbientOcclusionStage::BlurPass() {
 void AmbientOcclusionStage::BindSSAOTexture(int index) {
 	GL_SelectTexture(index);
 	ssaoBlurred->Bind();
+}
+
+void AmbientOcclusionStage::PrepareDepthPass() {
+    GL_PROFILE("PrepareDepthPass");
+
+    qglBindFramebuffer(GL_FRAMEBUFFER, deinterlacedDepthFBO);
+    const GLenum buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3};
+    qglDrawBuffers(4, buffers);
+    qglClear(GL_COLOR_BUFFER_BIT);
+    GL_SelectTexture(0);
+    globalImages->currentDepthImage->Bind();
+
+    deinterlaceDepthShader->Activate();
+    RB_DrawFullScreenQuad();
 }

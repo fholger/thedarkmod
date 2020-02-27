@@ -337,6 +337,10 @@ GLuint GLSLProgram::CompileShader( GLint shaderType, const char *sourceFile, con
 	return shader;
 }
 
+void GLSLProgram::BindFragDataLocation(const char *name, GLuint colorNumber) {
+    qglBindFragDataLocation( program, colorNumber, name );
+}
+
 
 /// UNIT TESTS FOR SHADER INCLUDES AND DEFINES
 
