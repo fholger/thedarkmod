@@ -37,6 +37,9 @@ void DrawBatchExecutor::Destroy() {
 }
 
 void DrawBatchExecutor::BeginBatch( int maxDrawCalls ) {
+	if ( maxDrawCalls > MAX_DRAW_COMMANDS ) {
+		common->Error( "Tried to allocated draw batch for %d draw calls, exceeding allowed maximum", maxDrawCalls );
+	}
 	maxDrawCommands = maxDrawCalls;
 	currentIndex = 0;
 	if (ShouldUseMultiDraw()) {

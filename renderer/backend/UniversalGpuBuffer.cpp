@@ -19,6 +19,8 @@
 extern idCVarBool r_usePersistentMapping;
 
 void UniversalGpuBuffer::Init( GLenum type, GLuint size, GLuint alignment ) {
+	assert( idMath::IsPowerOfTwo( alignment ) && "Alignment must be a power of 2" );
+	
 	if( mBufferObject ) {
 		Destroy();
 	}
