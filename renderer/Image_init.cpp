@@ -240,6 +240,7 @@ idImage::idImage() {
 	backgroundLoadState = IS_NONE;
 	isGpuResident = false;
 	textureHandle = 0;
+	lastNeededInFrame = -1;
 }
 
 /*
