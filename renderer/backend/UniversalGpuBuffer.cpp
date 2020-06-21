@@ -19,7 +19,7 @@
 extern idCVarBool r_usePersistentMapping;
 
 void UniversalGpuBuffer::Init( GLenum type, GLuint size, GLuint alignment ) {
-	if( mMapBase ) {
+	if( mBufferObject ) {
 		Destroy();
 	}
 

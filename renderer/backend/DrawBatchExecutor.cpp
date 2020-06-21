@@ -155,7 +155,7 @@ void DrawBatchExecutor::InitDrawIdBuffer() {
 	for (uint32_t i = 0; i < MAX_DRAW_COMMANDS; ++i) {
 		drawIds[i] = i;
 	}
-	qglBufferData(GL_ARRAY_BUFFER, drawIds.size(), drawIds.data(), GL_STATIC_DRAW);
+	qglBufferData(GL_ARRAY_BUFFER, drawIds.size() * sizeof(uint32_t), drawIds.data(), GL_STATIC_DRAW);
 	qglBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	qglVertexAttribIFormat( Attributes::Default::DrawId, 1, GL_UNSIGNED_INT, 0 );
