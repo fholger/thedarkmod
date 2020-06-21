@@ -66,8 +66,9 @@ struct DepthStage::ShaderParams {
 	idMat4 textureMatrix;
 	idVec4 color;
 	uint32_t scissor[4];
-	idVec2 alphaTest;
 	uint64_t textureHandle;
+	float alphaTest;
+	float padding;
 };
 
 DepthStage::DepthStage(ShaderParamsBuffer* shaderParamsBuffer, DrawBatchExecutor* drawBatchExecutor)
@@ -287,7 +288,7 @@ void DepthStage::IssueDrawCommand( const drawSurf_t *surf, const shaderStage_t *
 
 	memcpy( params.modelViewMatrix.ToFloatPtr(), surf->space->modelViewMatrix, sizeof(idMat4) );
 	CalcScissorParam( params.scissor, surf->scissorRect );
-	params.alphaTest.x = -1.f;
+	params.alphaTest = -1.f;
 
 	if ( surf->material->GetSort() == SS_SUBVIEW ) {
 		// subviews will just down-modulate the color buffer by overbright
@@ -301,7 +302,7 @@ void DepthStage::IssueDrawCommand( const drawSurf_t *surf, const shaderStage_t *
 	if( stage ) {
 		// set the alpha modulate
 		params.color[3] = surf->shaderRegisters[stage->color.registers[3]];
-		params.alphaTest.x = surf->shaderRegisters[stage->alphaTestRegister];
+		params.alphaTest = surf->shaderRegisters[stage->alphaTestRegister];
 
 		if( renderBackend->ShouldUseBindlessTextures() ) {
 			stage->texture.image->MakeResident();
