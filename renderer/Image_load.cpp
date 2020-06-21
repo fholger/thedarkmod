@@ -1711,7 +1711,7 @@ void idImage::Print() const {
 }
 
 void idImage::MakeResident() {
-	if (residency & IR_GRAPHICS == 0) {
+	if ( ( residency & IR_GRAPHICS ) == 0 ) {
 		common->Warning( "Trying to make resident a texture that does not reside in GPU memory: %s", imgName.c_str() );
 		return;
 	}
