@@ -15,13 +15,13 @@ out vec4 FragColor;
 
 #ifdef BINDLESS_TEXTURES
 vec4 textureAlpha() {
-    sampler2D tex = sampler2D(params[var_DrawId].texture);
-    return texture(tex, var_TexCoord0.st);
+	sampler2D tex = sampler2D(params[var_DrawId].texture);
+	return texture(tex, var_TexCoord0.st);
 }
 #else
 uniform sampler2D u_texture;
 vec4 textureAlpha() {
-    return texture(u_texture, var_TexCoord0.st);
+	return texture(u_texture, var_TexCoord0.st);
 }
 #endif
 
@@ -33,12 +33,12 @@ void main() {
 	if (gl_FragCoord.x < scissor.x || gl_FragCoord.y < scissor.y || gl_FragCoord.x >= scissor.x + scissor.z || gl_FragCoord.y >= scissor.y + scissor.w)
 		discard;
 	
-	if (params[var_DrawId].alphaTest.x < 0) {
+	if (params[var_DrawId].alphaTest < 0) {
 		FragColor = params[var_DrawId].color;
 	}
 	else {
 		vec4 tex = textureAlpha();
-		if (tex.a <= params[var_DrawId].alphaTest.x)
+		if (tex.a <= params[var_DrawId].alphaTest)
 			discard;
 		FragColor = tex * params[var_DrawId].color;
 	}
