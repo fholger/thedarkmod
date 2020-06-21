@@ -4,7 +4,7 @@ uniform ViewParamsBlock {
 
 #pragma tdm_define "MAX_SHADER_PARAMS"
 
-struct ShaderParams {
+struct PerDrawCallParams {
 	mat4 modelMatrix;
 	mat4 modelViewMatrix;
 	vec4 bumpMatrix[2];
@@ -26,8 +26,8 @@ struct ShaderParams {
 	uvec2 padding;
 };
 
-layout (std140) uniform ShaderParamsBlock {
-	ShaderParams params[MAX_SHADER_PARAMS];
+layout (std140) uniform PerDrawCallParamsBlock {
+	PerDrawCallParams params[MAX_SHADER_PARAMS];
 };
 
 layout (std140) uniform ShadowSamplesBlock {

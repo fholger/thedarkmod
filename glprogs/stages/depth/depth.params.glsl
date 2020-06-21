@@ -1,6 +1,6 @@
 #pragma tdm_define "MAX_SHADER_PARAMS"
 
-struct ShaderParams {
+struct PerDrawCallParams {
 	mat4 modelViewMatrix;
 	mat4 textureMatrix;
 	vec4 color;
@@ -10,6 +10,6 @@ struct ShaderParams {
 	float padding;
 };
 
-layout (std140) uniform ShaderParamsBlock {
-	ShaderParams params[MAX_SHADER_PARAMS];
+layout (std140) uniform PerDrawCallParamsBlock {
+	PerDrawCallParams params[MAX_SHADER_PARAMS];
 };

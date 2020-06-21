@@ -120,7 +120,7 @@ void InteractionStage::LoadInteractionShader( GLSLProgram *shader, const idStr &
 		uniforms->specularTexture.Set( TU_SPECULAR );
 	}
 	shader->BindUniformBlockLocation( 0, "ViewParamsBlock" );
-	shader->BindUniformBlockLocation( 1, "ShaderParamsBlock" );
+	shader->BindUniformBlockLocation( 1, "PerDrawCallParamsBlock" );
 	shader->BindUniformBlockLocation( 2, "ShadowSamplesBlock" );
 }
 
