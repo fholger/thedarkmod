@@ -6,13 +6,13 @@ uniform ViewParamsBlock {
 
 #pragma tdm_define "MAX_SHADER_PARAMS"
 
-struct ShaderParams {
+struct PerDrawCallParams {
 	mat4 modelViewMatrix;
 	vec4 localLightOrigin;
 };
 
-layout (std140) uniform ShaderParamsBlock {
-	ShaderParams params[MAX_SHADER_PARAMS];
+layout (std140) uniform PerDrawCallParamsBlock {
+	PerDrawCallParams params[MAX_SHADER_PARAMS];
 };
 
 in vec4 attr_Position;
