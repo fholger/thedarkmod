@@ -1716,7 +1716,7 @@ void idImage::MakeResident() {
 		return;
 	}
     lastNeededInFrame = backEnd.frameCount;
-    if (!isGpuResident) {
+    if (!isBindlessHandleResident) {
 		// Bind will try to load the texture, if necessary
 		Bind();
 		if (texnum == TEXTURE_NOT_LOADED || backgroundLoadState != IS_NONE) {
@@ -1725,7 +1725,7 @@ void idImage::MakeResident() {
 			return;
 		}
 
-        isGpuResident = true;
+        isBindlessHandleResident = true;
         textureHandle = qglGetTextureHandleARB(texnum);
 		if (textureHandle == 0) {
 			common->Warning( "Failed to get bindless texture handle: %s", imgName.c_str() );
@@ -1736,15 +1736,15 @@ void idImage::MakeResident() {
 }
 
 void idImage::MakeNonResident() {
-    if (isGpuResident) {
+    if (isBindlessHandleResident) {
         qglMakeTextureHandleNonResidentARB(textureHandle);
-        isGpuResident = false;
+        isBindlessHandleResident = false;
 		textureHandle = 0;
     }
 }
 
 GLuint64 idImage::BindlessHandle() {
-	if (!isGpuResident) {
+	if (!isBindlessHandleResident) {
 		common->Warning( "Acquiring bindless handle for non-resident texture. Diverting to white image" );
 		globalImages->whiteImage->MakeResident();
 		return globalImages->whiteImage->BindlessHandle();
