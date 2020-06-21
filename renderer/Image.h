@@ -260,7 +260,7 @@ public:
 	// START bindless texture support
 private:
 	GLuint64			textureHandle;
-	bool				isGpuResident;
+	bool				isBindlessHandleResident;
 public:
 	int					lastNeededInFrame;
 	void				MakeResident();

@@ -238,7 +238,7 @@ idImage::idImage() {
 	memset( &cpuData, 0, sizeof( cpuData ) );
 	residency = IR_GRAPHICS;
 	backgroundLoadState = IS_NONE;
-	isGpuResident = false;
+	isBindlessHandleResident = false;
 	textureHandle = 0;
 	lastNeededInFrame = -1;
 }
