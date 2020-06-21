@@ -50,16 +50,14 @@ namespace {
 		shader->BindUniformBlockLocation( 1, "ShaderParamsBlock" );
 	}
 
-	idVec4 CalcScissorParam( const idScreenRect &screenRect ) {
+	void CalcScissorParam( uint32_t scissor[4], const idScreenRect &screenRect ) {
 		float xScale = static_cast<float>(frameBuffers->activeFbo->Width()) / glConfig.vidWidth;
 		float yScale = static_cast<float>(frameBuffers->activeFbo->Height()) / glConfig.vidHeight;
 
-		idVec4 r;
-		r.x = xScale * (backEnd.viewDef->viewport.x1 + screenRect.x1);
-		r.y = yScale * (backEnd.viewDef->viewport.y1 + screenRect.y1);
-		r.z = xScale * (backEnd.viewDef->viewport.x1 + screenRect.x2);
-		r.w = yScale * (backEnd.viewDef->viewport.y1 + screenRect.y2);
-		return r;
+		scissor[0] = xScale * (backEnd.viewDef->viewport.x1 + screenRect.x1);
+		scissor[1] = yScale * (backEnd.viewDef->viewport.y1 + screenRect.y1);
+		scissor[2] = xScale * (screenRect.x2 + 1 - screenRect.x1);
+		scissor[3] = yScale * (screenRect.y2 + 1 - screenRect.y1);
 	}
 }
 
@@ -67,7 +65,7 @@ struct DepthStage::ShaderParams {
 	idMat4 modelViewMatrix;
 	idMat4 textureMatrix;
 	idVec4 color;
-	idVec4 scissor;
+	uint32_t scissor[4];
 	idVec2 alphaTest;
 	uint64_t textureHandle;
 };
@@ -288,7 +286,7 @@ void DepthStage::IssueDrawCommand( const drawSurf_t *surf, const shaderStage_t *
 	ShaderParams &params = shaderParams[currentIndex++];
 
 	memcpy( params.modelViewMatrix.ToFloatPtr(), surf->space->modelViewMatrix, sizeof(idMat4) );
-	params.scissor = CalcScissorParam( surf->scissorRect );
+	CalcScissorParam( params.scissor, surf->scissorRect );
 	params.alphaTest.x = -1.f;
 
 	if ( surf->material->GetSort() == SS_SUBVIEW ) {
