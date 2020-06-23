@@ -1291,6 +1291,9 @@
     <ClInclude Include="renderer\FrameBufferManager.h">
       <Filter>Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\backend\GpuBuffer.h">
+      <Filter>Renderer\Backend</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -3027,6 +3030,9 @@
     </ClCompile>
     <ClCompile Include="renderer\FrameBufferManager.cpp">
       <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\backend\GpuBuffer.cpp">
+      <Filter>Renderer\Backend</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
