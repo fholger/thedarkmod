@@ -110,6 +110,12 @@ void GpuBuffer::Bind() {
 	qglBindBuffer(type, bufferObject);
 }
 
+const void * GpuBuffer::BufferOffset( const void *offset ) {
+	GLintptr mapOffset = static_cast< const byte* >( offset ) - bufferContents;
+	assert(mapOffset >= 0 && mapOffset < totalSize);
+	return reinterpret_cast< const void* >( mapOffset );
+}
+
 void GpuBuffer::SwitchFrame() {
 	// lock current frame contents in buffer
 	assert( frameFences[currentFrame] == nullptr );
