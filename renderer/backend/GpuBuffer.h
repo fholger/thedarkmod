@@ -26,6 +26,7 @@ public:
 	
 	void BindRange( GLuint index, byte *offset, GLuint size );
 	void Bind();
+	const void * BufferOffset( const void *offset );
 
 	void SwitchFrame();
 

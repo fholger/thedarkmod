@@ -13,43 +13,69 @@
 
 ******************************************************************************/
 #pragma once
-#include "UniversalGpuBuffer.h"
 #include "../tr_local.h"
+#include "GpuBuffer.h"
 
-struct DrawElementsIndirectCommand {
-    uint count;
-    uint instanceCount;
-    uint firstIndex;
-    uint baseVertex;
-    uint baseInstance;
+template< typename ShaderParams >
+struct DrawBatch {
+    ShaderParams *shaderParams;
+    drawSurf_t **surfs;
+    uint maxBatchSize;
 };
 
 class DrawBatchExecutor {
 public:
+	static const GLuint DEFAULT_UBO_INDEX = 1;
+	
 	void Init();
 	void Destroy();
 
-	void BeginBatch(int maxDrawCalls);
-	void AddDrawVertSurf(const drawSurf_t *surf);
-	void AddShadowSurf( const drawSurf_t * surf );
-	void DrawBatch();
-	void Lock();
+	template< typename ShaderParams >
+	DrawBatch<ShaderParams> BeginBatch();
 
-	static const int MAX_DRAW_COMMANDS = 4096;
+	void ExecuteDrawVertBatch( int numDrawSurfs, GLuint uboIndex = DEFAULT_UBO_INDEX );
+	void ExecuteShadowVertBatch( int numDrawSurfs, GLuint uboIndex = DEFAULT_UBO_INDEX );
+
+	void EndFrame();
+
 private:
-	UniversalGpuBuffer drawCommandBuffer;
+	static const uint MAX_SHADER_PARAMS_SIZE = 512;
+	
+    GpuBuffer shaderParamsBuffer;
+	GpuBuffer drawCommandBuffer;
 	GLuint drawIdBuffer = 0;
 	bool drawIdVertexEnabled = false;
-	std::vector<DrawElementsIndirectCommand> fallbackBuffer;
-	
-	DrawElementsIndirectCommand *currentCommands = nullptr;
-	uint maxDrawCommands = 0;
-	uint currentIndex = 0;
 
-	uint numVerts = 0;
-	uint numIndexes = 0;
-	bool shadows = false;
+	int maxUniformBlockSize = 0;
+
+	uint maxBatchSize = 0;
+	uint shaderParamsSize = 0;
+
+	idList<drawSurf_t *> drawSurfs;
 
 	bool ShouldUseMultiDraw() const;
 	void InitDrawIdBuffer();
+
+	uint EnsureAvailableStorageInBuffers( uint shaderParamsSize );
+
+	void DrawVertsMultiDraw( int numDrawSurfs );
+	void DrawVertsSingleDraws( int numDrawSurfs );
+	void ShadowVertsMultiDraw( int numDrawSurfs );
+	void ShadowVertsSingleDraws( int numDrawSurfs );
 };
+
+template<typename ShaderParams>
+DrawBatch<ShaderParams> DrawBatchExecutor::BeginBatch() {
+	static_assert( sizeof(ShaderParams) % 16 == 0,
+		"UBO structs must be 16-byte aligned, use padding if necessary. Be sure to obey the std140 layout rules." );
+	static_assert( sizeof(ShaderParams) <= MAX_SHADER_PARAMS_SIZE,
+		"Struct surpasses assumed max shader params size. Make struct smaller or increase MAX_SHADER_PARAMS_SIZE if necessary");
+
+	shaderParamsSize = sizeof(ShaderParams);
+
+    ::DrawBatch<ShaderParams> drawBatch;
+    drawBatch.maxBatchSize = maxBatchSize = EnsureAvailableStorageInBuffers( sizeof(ShaderParams) );
+    drawBatch.shaderParams = reinterpret_cast<ShaderParams *>( shaderParamsBuffer.CurrentWriteLocation() );
+	drawBatch.surfs = drawSurfs.Ptr();
+    return drawBatch;
+}
