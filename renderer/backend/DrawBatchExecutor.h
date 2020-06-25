@@ -19,7 +19,7 @@
 template< typename ShaderParams >
 struct DrawBatch {
     ShaderParams *shaderParams;
-    drawSurf_t **surfs;
+    const drawSurf_t **surfs;
     uint maxBatchSize;
 };
 
@@ -38,6 +38,11 @@ public:
 
 	void EndFrame();
 
+	template< typename ShaderParams >
+	uint MaxShaderParamsArraySize() {
+		return maxUniformBlockSize / sizeof( ShaderParams );
+	}
+
 private:
 	static const uint MAX_SHADER_PARAMS_SIZE = 512;
 	
@@ -51,7 +56,7 @@ private:
 	uint maxBatchSize = 0;
 	uint shaderParamsSize = 0;
 
-	idList<drawSurf_t *> drawSurfs;
+	idList<const drawSurf_t *> drawSurfs;
 
 	bool ShouldUseMultiDraw() const;
 	void InitDrawIdBuffer();

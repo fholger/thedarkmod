@@ -21,7 +21,6 @@
 #include "../AmbientOcclusionStage.h"
 #include "../Profiling.h"
 #include "../GLSLProgram.h"
-#include "../GLSLProgramManager.h"
 #include "../FrameBufferManager.h"
 
 RenderBackend renderBackendImpl;
@@ -31,13 +30,12 @@ idCVar r_useNewBackend( "r_useNewBackend", "0", CVAR_BOOL|CVAR_RENDERER|CVAR_ARC
 idCVar r_useBindlessTextures("r_useBindlessTextures", "1", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Use experimental bindless texturing to reduce drawcall overhead (if supported by hardware)");
 
 RenderBackend::RenderBackend() 
-	: depthStage( &shaderParamsBuffer, &drawBatchExecutor ),
-	  interactionStage( &shaderParamsBuffer, &drawBatchExecutor ),
-	  stencilShadowStage( &shaderParamsBuffer, &drawBatchExecutor )
+	: depthStage( &drawBatchExecutor ),
+	  interactionStage( &drawBatchExecutor ),
+	  stencilShadowStage( &drawBatchExecutor )
 {}
 
 void RenderBackend::Init() {
-	shaderParamsBuffer.Init();
 	drawBatchExecutor.Init();
 	depthStage.Init();
 	interactionStage.Init();
@@ -49,7 +47,6 @@ void RenderBackend::Shutdown() {
 	interactionStage.Shutdown();
 	depthStage.Shutdown();
 	drawBatchExecutor.Destroy();
-	shaderParamsBuffer.Destroy();
 }
 
 void RenderBackend::DrawView( const viewDef_t *viewDef ) {
@@ -127,8 +124,7 @@ void RenderBackend::DrawView( const viewDef_t *viewDef ) {
 }
 
 void RenderBackend::EndFrame() {
-	shaderParamsBuffer.Lock();
-	drawBatchExecutor.Lock();
+	drawBatchExecutor.EndFrame();
 	if (GLAD_GL_ARB_bindless_texture) {
 		globalImages->MakeUnusedImagesNonResident();
 	}
