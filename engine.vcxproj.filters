@@ -1267,9 +1267,6 @@
     <ClInclude Include="renderer\backend\DrawBatchExecutor.h">
       <Filter>Renderer\Backend</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\backend\UniversalGpuBuffer.h">
-      <Filter>Renderer\Backend</Filter>
-    </ClInclude>
     <ClInclude Include="renderer\backend\StencilShadowStage.h">
       <Filter>Renderer\Backend</Filter>
     </ClInclude>
@@ -3002,9 +2999,6 @@
       <Filter>Renderer\Backend</Filter>
     </ClCompile>
     <ClCompile Include="renderer\backend\DrawBatchExecutor.cpp">
-      <Filter>Renderer\Backend</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\backend\UniversalGpuBuffer.cpp">
       <Filter>Renderer\Backend</Filter>
     </ClCompile>
     <ClCompile Include="renderer\backend\StencilShadowStage.cpp">

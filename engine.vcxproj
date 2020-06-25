@@ -463,7 +463,6 @@
     <ClInclude Include="renderer\backend\GpuBuffer.h" />
     <ClInclude Include="renderer\BloomStage.h" />
     <ClInclude Include="renderer\backend\DrawBatchExecutor.h" />
-    <ClInclude Include="renderer\backend\UniversalGpuBuffer.h" />
     <ClInclude Include="renderer\backend\StencilShadowStage.h" />
     <ClInclude Include="renderer\backend\InteractionStage.h" />
     <ClInclude Include="renderer\backend\DepthStage.h" />
@@ -1013,7 +1012,6 @@
     <ClCompile Include="renderer\backend\GpuBuffer.cpp" />
     <ClCompile Include="renderer\BloomStage.cpp" />
     <ClCompile Include="renderer\backend\DrawBatchExecutor.cpp" />
-    <ClCompile Include="renderer\backend\UniversalGpuBuffer.cpp" />
     <ClCompile Include="renderer\backend\StencilShadowStage.cpp" />
     <ClCompile Include="renderer\backend\InteractionStage.cpp" />
     <ClCompile Include="renderer\backend\DepthStage.cpp" />

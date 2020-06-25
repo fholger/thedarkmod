@@ -14,6 +14,27 @@
 ******************************************************************************/
 #pragma once
 
+/**
+ * Management class for a universal GPU buffer containing dynamic data that is
+ * regularly updated every frame. Can be used for vertex/index data, UBOs,
+ * multidraw commands, ...
+ *
+ * The buffer is divided into three frames - one frame for the GPU to draw with,
+ * one for the CPU to write to and one "in-transit" for the GL driver, so that
+ * we avoid synchronization between CPU and GPU in all but the rarest of cases.
+ * An optional static section at the beginning of the buffer can be filled on
+ * initialization.
+ *
+ * To make use of the buffer, get its current write address with `CurrentWriteLocation`
+ * and the `BytesRemaining` in the current frame region and copy your data to it.
+ * Once you are done writing your data and before using it in a GPU operation, you
+ * need to `Commit` the range you wrote to. Bind the buffer or the write location's
+ * range as needed.
+ *
+ * After a frame is completed, you need to call `SwitchFrame` to switch to the next
+ * frame region and issue sync fences and waits to make sure no buffer region is
+ * written to that is still in use by the GPU.
+ */
 class GpuBuffer {
 public:
 	void Init( GLenum type, GLuint size, GLuint alignment, byte *staticData = nullptr, GLuint numStaticBytes = 0 );
