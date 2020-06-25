@@ -23,6 +23,23 @@ struct DrawBatch {
     uint maxBatchSize;
 };
 
+/**
+ * Use this class to batch draw calls sharing the same GL state together.
+ * Depending on hardware capabilities and active cvars, the batch will be
+ * submitted in a single MultiDrawIndirect call or in separate
+ * DrawElementsBaseVertex calls. To pass draw call parameters to the shader,
+ * the class also manages and provides a UBO that can be filled with the
+ * relevant data.
+ *
+ * To start a batch, call `BeginBatch` with the ShaderParams struct that
+ * represents your UBO params structure. Note that this struct must adhere
+ * to the std140 layout rules specified in the OpenGL specification. You
+ * will receive a DrawBatch struct that contains two arrays - one for your
+ * ShaderParams and one for the drawSurfs to render. Fill these arrays up
+ * to the `maxBatchSize`, then call `ExecuteDrawVertBatch` or
+ * `ExecuteShadowVertBatch`, depending on what you intend to draw, with
+ * the actual number of surfs to draw.
+ */
 class DrawBatchExecutor {
 public:
 	static const GLuint DEFAULT_UBO_INDEX = 1;
