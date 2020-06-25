@@ -77,7 +77,7 @@ void DrawBatchExecutor::ExecuteDrawVertBatch( int numDrawSurfs, GLuint uboIndex 
 
 	if ( r_showPrimitives.GetBool() && !backEnd.viewDef->IsLightGem() && backEnd.viewDef->viewEntitys ) {
 		for ( int i = 0; i < numDrawSurfs; ++i ) {
-			drawSurf_t *surf = drawSurfs[i];
+			const drawSurf_t *surf = drawSurfs[i];
 			backEnd.pc.c_drawIndexes += surf->numIndexes;
 			if ( surf->frontendGeo ) {
 				backEnd.pc.c_drawVertexes += surf->frontendGeo->numVerts;
@@ -107,7 +107,7 @@ void DrawBatchExecutor::ExecuteShadowVertBatch( int numDrawSurfs, GLuint uboInde
 
 	if ( r_showPrimitives.GetBool() && !backEnd.viewDef->IsLightGem() && backEnd.viewDef->viewEntitys ) {
 		for ( int i = 0; i < numDrawSurfs; ++i ) {
-			drawSurf_t *surf = drawSurfs[i];
+			const drawSurf_t *surf = drawSurfs[i];
 			backEnd.pc.c_shadowIndexes += surf->numIndexes;
 			if ( surf->frontendGeo ) {
 				backEnd.pc.c_shadowVertexes += surf->frontendGeo->numVerts;
@@ -171,7 +171,7 @@ void DrawBatchExecutor::DrawVertsMultiDraw( int numDrawSurfs ) {
 	DrawElementsIndirectCommand * drawCommands = reinterpret_cast<DrawElementsIndirectCommand *>( drawCommandBuffer.CurrentWriteLocation() );	
 	for ( int i = 0; i < numDrawSurfs; ++i ) {
 		DrawElementsIndirectCommand &cmd = drawCommands[i];
-		drawSurf_t *surf = drawSurfs[i];
+		const drawSurf_t *surf = drawSurfs[i];
 		cmd.count = surf->numIndexes;
 		cmd.instanceCount = 1;
 		cmd.firstIndex = surf->indexCache.offset / sizeof(glIndex_t);
@@ -193,7 +193,7 @@ void DrawBatchExecutor::DrawVertsSingleDraws( int numDrawSurfs ) {
 		qglDisableVertexAttribArray( Attributes::Default::DrawId );
 	}
 	for (int i = 0; i < numDrawSurfs; ++i) {
-		drawSurf_t *surf = drawSurfs[i];
+		const drawSurf_t *surf = drawSurfs[i];
 		qglVertexAttribI1i(Attributes::Default::DrawId, i);
 		const void *indexOffset = reinterpret_cast< const void* >( surf->indexCache.offset );
 		uint baseVertex = surf->ambientCache.offset / sizeof(idDrawVert);
@@ -205,7 +205,7 @@ void DrawBatchExecutor::ShadowVertsMultiDraw( int numDrawSurfs ) {
 	DrawElementsIndirectCommand * drawCommands = reinterpret_cast<DrawElementsIndirectCommand *>( drawCommandBuffer.CurrentWriteLocation() );	
 	for ( int i = 0; i < numDrawSurfs; ++i ) {
 		DrawElementsIndirectCommand &cmd = drawCommands[i];
-		drawSurf_t *surf = drawSurfs[i];
+		const drawSurf_t *surf = drawSurfs[i];
 		cmd.count = surf->numIndexes;
 		cmd.instanceCount = 1;
 		cmd.firstIndex = surf->indexCache.offset / sizeof(glIndex_t);
@@ -227,7 +227,7 @@ void DrawBatchExecutor::ShadowVertsSingleDraws( int numDrawSurfs ) {
 		qglDisableVertexAttribArray( Attributes::Default::DrawId );
 	}
 	for (int i = 0; i < numDrawSurfs; ++i) {
-		drawSurf_t *surf = drawSurfs[i];
+		const drawSurf_t *surf = drawSurfs[i];
 		qglVertexAttribI1i(Attributes::Default::DrawId, i);
 		const void *indexOffset = reinterpret_cast< const void* >( surf->indexCache.offset );
 		uint baseVertex = surf->shadowCache.offset / sizeof(shadowCache_t);

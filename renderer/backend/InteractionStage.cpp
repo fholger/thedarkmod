@@ -14,7 +14,6 @@
 ******************************************************************************/
 
 #include "precompiled.h"
-#pragma hdrstop
 
 #include "InteractionStage.h"
 
@@ -23,7 +22,6 @@
 #include "../glsl.h"
 #include "../GLSLProgramManager.h"
 #include "../FrameBuffer.h"
-#include "ShaderParamsBuffer.h"
 #include "../AmbientOcclusionStage.h"
 #include "DrawBatchExecutor.h"
 
@@ -100,7 +98,7 @@ namespace {
 
 void InteractionStage::LoadInteractionShader( GLSLProgram *shader, const idStr &baseName, bool bindless ) {
 	idDict defines;
-	defines.Set( "MAX_SHADER_PARAMS", idStr::Fmt( "%d", maxSupportedDrawsPerBatch ) );
+	defines.Set( "MAX_SHADER_PARAMS", idStr::Fmt( "%d", maxShaderParamsArraySize ) );
 	if (bindless) {
 		defines.Set( "BINDLESS_TEXTURES", "1" );
 	}
@@ -125,12 +123,12 @@ void InteractionStage::LoadInteractionShader( GLSLProgram *shader, const idStr &
 }
 
 
-InteractionStage::InteractionStage( ShaderParamsBuffer *shaderParamsBuffer, DrawBatchExecutor *drawBatchExecutor )
-	: shaderParamsBuffer( shaderParamsBuffer ), drawBatches( drawBatchExecutor ), interactionShader( nullptr )
+InteractionStage::InteractionStage( DrawBatchExecutor *drawBatchExecutor )
+	: drawBatchExecutor( drawBatchExecutor ), interactionShader( nullptr )
 {}
 
 void InteractionStage::Init() {
-	maxSupportedDrawsPerBatch = shaderParamsBuffer->MaxSupportedParamBufferSize<ShaderParams>();
+	maxShaderParamsArraySize = drawBatchExecutor->MaxShaderParamsArraySize<ShaderParams>();
 	
 	ambientInteractionShader = programManager->LoadFromGenerator( "interaction_ambient", 
 		[this](GLSLProgram *shader) { LoadInteractionShader( shader, "interaction.ambient", false ); } );
@@ -234,7 +232,7 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 
 		vertexCache.BindVertex();
 
-		ResetShaderParams();
+		BeginDrawBatch();
 		for ( const drawSurf_t *surf : drawSurfs ) {
 			if ( surf->dsFlags & DSF_SHADOW_MAP_ONLY ) {
 				continue;
@@ -484,7 +482,7 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 		din->specularImage->Bind();
 	}
 
-	ShaderParams &params = shaderParams[currentIndex];
+	ShaderParams &params = drawBatch.shaderParams[currentIndex];
 
 	memcpy( params.modelMatrix.ToFloatPtr(), din->surf->space->modelMatrix, sizeof(idMat4) );
 	memcpy( params.modelViewMatrix.ToFloatPtr(), din->surf->space->modelViewMatrix, sizeof(idMat4) );
@@ -529,32 +527,25 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 		params.specularTexture = din->specularImage->BindlessHandle();
 	}
 
-	drawBatches->AddDrawVertSurf( din->surf );
+	drawBatch.surfs[currentIndex] = din->surf;
 
 	++currentIndex;
-	if (currentIndex == maxSupportedDrawsPerBatch) {
+	if (currentIndex == drawBatch.maxBatchSize) {
 		ExecuteDrawCalls();
 	}
 }
 
-void InteractionStage::ResetShaderParams() {
+void InteractionStage::BeginDrawBatch() {
 	currentIndex = 0;
-	shaderParams = shaderParamsBuffer->Request<ShaderParams>(maxSupportedDrawsPerBatch);
-	drawBatches->BeginBatch( maxSupportedDrawsPerBatch );
+	drawBatch = drawBatchExecutor->BeginBatch<ShaderParams>();
 }
 
 void InteractionStage::ExecuteDrawCalls() {
-	int totalDrawCalls = currentIndex;
-	if (totalDrawCalls == 0) {
+	if (currentIndex == 0) {
 		return;
 	}
-
-	shaderParamsBuffer->Commit( shaderParams, totalDrawCalls );
-	shaderParamsBuffer->BindRange( 1, shaderParams, totalDrawCalls );
-
-	drawBatches->DrawBatch();
-
-	ResetShaderParams();
+	drawBatchExecutor->ExecuteDrawVertBatch( currentIndex );
+	BeginDrawBatch();
 }
 
 void InteractionStage::PreparePoissonSamples() {

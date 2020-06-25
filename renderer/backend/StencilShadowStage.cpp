@@ -14,11 +14,9 @@
 ******************************************************************************/
 
 #include "precompiled.h"
-#pragma hdrstop
 
 #include "StencilShadowStage.h"
 #include "../Profiling.h"
-#include "ShaderParamsBuffer.h"
 #include "DrawBatchExecutor.h"
 #include "../GLSLProgram.h"
 #include "../GLSLProgramManager.h"
@@ -28,15 +26,13 @@ struct StencilShadowStage::ShaderParams {
 	idVec4 localLightOrigin;
 };
 
-StencilShadowStage::StencilShadowStage( ShaderParamsBuffer *shaderParamsBuffer, DrawBatchExecutor *drawBatchExecutor ) {
-	this->shaderParamsBuffer = shaderParamsBuffer;
-	this->drawBatches = drawBatchExecutor;
+StencilShadowStage::StencilShadowStage( DrawBatchExecutor *drawBatchExecutor ) {
+	this->drawBatchExecutor = drawBatchExecutor;
 }
 
 void StencilShadowStage::Init() {
-	maxSupportedDrawsPerBatch = shaderParamsBuffer->MaxSupportedParamBufferSize<ShaderParams>();
 	idDict defines;
-	defines.Set( "MAX_SHADER_PARAMS", idStr::Fmt("%d", maxSupportedDrawsPerBatch) );
+	defines.Set( "MAX_SHADER_PARAMS", idStr::Fmt("%d", drawBatchExecutor->MaxShaderParamsArraySize<ShaderParams>()) );
 	stencilShadowShader = programManager->LoadFromFiles( "shadows_stencil", 
 		"stages/stencil/stencilshadow.vert.glsl",
 		"stages/stencil/stencilshadow.frag.glsl",
@@ -110,28 +106,24 @@ void StencilShadowStage::DrawSurfs( const drawSurf_t **surfs, size_t count ) {
 
 	vertexCache.VertexPosition( surfs[0]->shadowCache, ATTRIB_SHADOW );
 
-	ShaderParams *paramsBuffer = shaderParamsBuffer->Request<ShaderParams>( maxSupportedDrawsPerBatch );
-	int paramsIdx = 0;
-	drawBatches->BeginBatch( maxSupportedDrawsPerBatch );
+	DrawBatch<ShaderParams> drawBatch = drawBatchExecutor->BeginBatch<ShaderParams>();
+	uint paramsIdx = 0;
 
 	for (size_t i = 0; i < count; ++i) {
 		const drawSurf_t *surf = surfs[i];
-		ShaderParams &params = paramsBuffer[paramsIdx++];
+		ShaderParams &params = drawBatch.shaderParams[paramsIdx];
 		memcpy( params.modelViewMatrix.ToFloatPtr(), surf->space->modelViewMatrix, sizeof(idMat4) );
 		R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.vLight->globalLightOrigin, params.localLightOrigin.ToVec3() );
 		params.localLightOrigin.w = 0.0f;
-		drawBatches->AddShadowSurf( surf );
+		drawBatch.surfs[paramsIdx] = surf;
+		++paramsIdx;
 
-		if (paramsIdx == maxSupportedDrawsPerBatch) {
-			shaderParamsBuffer->Commit( paramsBuffer, paramsIdx );
-			shaderParamsBuffer->BindRange( 1, paramsBuffer, paramsIdx );
-			drawBatches->DrawBatch();
-			paramsBuffer = shaderParamsBuffer->Request<ShaderParams>( maxSupportedDrawsPerBatch );
-			drawBatches->BeginBatch( maxSupportedDrawsPerBatch );
+		if (paramsIdx == drawBatch.maxBatchSize) {
+			drawBatchExecutor->ExecuteShadowVertBatch( paramsIdx );
+			drawBatch = drawBatchExecutor->BeginBatch<ShaderParams>();
+			paramsIdx = 0;
 		}
 	}
 
-	shaderParamsBuffer->Commit( paramsBuffer, paramsIdx );
-	shaderParamsBuffer->BindRange( 1, paramsBuffer, paramsIdx );
-	drawBatches->DrawBatch();
+	drawBatchExecutor->ExecuteShadowVertBatch( paramsIdx );
 }

@@ -13,12 +13,10 @@
 
 ******************************************************************************/
 #include "precompiled.h"
-#pragma hdrstop
 
 #include "../tr_local.h"
 #include "DepthStage.h"
 #include "RenderBackend.h"
-#include "ShaderParamsBuffer.h"
 #include "../FrameBuffer.h"
 #include "../Profiling.h"
 #include "../glsl.h"
@@ -71,17 +69,17 @@ struct DepthStage::ShaderParams {
 	float padding;
 };
 
-DepthStage::DepthStage(ShaderParamsBuffer* shaderParamsBuffer, DrawBatchExecutor* drawBatchExecutor)
-	: shaderParamsBuffer(shaderParamsBuffer), drawBatchExecutor(drawBatchExecutor)
+DepthStage::DepthStage( DrawBatchExecutor* drawBatchExecutor )
+	: drawBatchExecutor(drawBatchExecutor)
 {
 }
 
 void DepthStage::Init() {
-	maxSupportedDrawsPerBatch = shaderParamsBuffer->MaxSupportedParamBufferSize<ShaderParams>();
-	depthShader = programManager->LoadFromGenerator( "depth_pass", [=](GLSLProgram *program) { LoadShader(program, maxSupportedDrawsPerBatch, false); } );
+	uint maxShaderParamsArraySize = drawBatchExecutor->MaxShaderParamsArraySize<ShaderParams>();
+	depthShader = programManager->LoadFromGenerator( "depth_pass", [=](GLSLProgram *program) { LoadShader(program, maxShaderParamsArraySize, false); } );
 
 	if( GLAD_GL_ARB_bindless_texture ) {
-		depthShaderBindless = programManager->LoadFromGenerator( "depth_bindless", [=](GLSLProgram *program) { LoadShader(program, maxSupportedDrawsPerBatch, true); } );
+		depthShaderBindless = programManager->LoadFromGenerator( "depth_bindless", [=](GLSLProgram *program) { LoadShader(program, maxShaderParamsArraySize, true); } );
 	}
 }
 
@@ -123,7 +121,7 @@ void DepthStage::DrawDepth( const viewDef_t *viewDef, drawSurf_t **drawSurfs, in
 
 	vertexCache.BindVertex();
 
-	ResetShaderParams();
+	BeginDrawBatch();
 
 	bool subViewEnabled = false;
 	for ( int i = 0; i < numDrawSurfs; ++i ) {
@@ -284,7 +282,7 @@ void DepthStage::IssueDrawCommand( const drawSurf_t *surf, const shaderStage_t *
 		stage->texture.image->Bind();
 	}
 
-	ShaderParams &params = shaderParams[currentIndex++];
+	ShaderParams &params = drawBatch.shaderParams[currentIndex];
 
 	memcpy( params.modelViewMatrix.ToFloatPtr(), surf->space->modelViewMatrix, sizeof(idMat4) );
 	CalcScissorParam( params.scissor, surf->scissorRect );
@@ -316,27 +314,23 @@ void DepthStage::IssueDrawCommand( const drawSurf_t *surf, const shaderStage_t *
 		}
 	}
 
-	drawBatchExecutor->AddDrawVertSurf( surf );
-	if ( currentIndex == maxSupportedDrawsPerBatch ) {
+	drawBatch.surfs[currentIndex] = surf;
+	++currentIndex;
+	if ( currentIndex == drawBatch.maxBatchSize ) {
 		ExecuteDrawCalls();
 	}
 }
 
-void DepthStage::ResetShaderParams() {
+void DepthStage::BeginDrawBatch() {
 	currentIndex = 0;
-	shaderParams = shaderParamsBuffer->Request<ShaderParams>( maxSupportedDrawsPerBatch );
-	drawBatchExecutor->BeginBatch( maxSupportedDrawsPerBatch );
+	drawBatch = drawBatchExecutor->BeginBatch<ShaderParams>();
 }
 
 void DepthStage::ExecuteDrawCalls() {
-	int totalDrawCalls = currentIndex;
-	if (totalDrawCalls == 0) {
+	if (currentIndex == 0) {
 		return;
 	}
 
-	shaderParamsBuffer->Commit( shaderParams, totalDrawCalls );
-	shaderParamsBuffer->BindRange( 1, shaderParams, totalDrawCalls );
-	drawBatchExecutor->DrawBatch();
-
-	ResetShaderParams();
+	drawBatchExecutor->ExecuteDrawVertBatch(currentIndex);
+	BeginDrawBatch();
 }
