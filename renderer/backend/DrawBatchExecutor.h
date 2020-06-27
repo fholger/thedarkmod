@@ -81,10 +81,10 @@ private:
 
 	uint EnsureAvailableStorageInBuffers( uint shaderParamsSize );
 
-	void DrawVertsMultiDraw( int numDrawSurfs );
-	void DrawVertsSingleDraws( int numDrawSurfs );
-	void ShadowVertsMultiDraw( int numDrawSurfs );
-	void ShadowVertsSingleDraws( int numDrawSurfs );
+	typedef uint (*BaseVertexFn)(const drawSurf_t *);
+	void ExecuteBatch( int numDrawSurfs, GLuint uboIndex, attribBind_t attribBind, BaseVertexFn baseVertexFn );
+	void BatchMultiDraw( int numDrawSurfs, BaseVertexFn baseVertexFn );
+	void BatchSingleDraws( int numDrawSurfs, BaseVertexFn baseVertexFn );
 };
 
 template<typename ShaderParams>
