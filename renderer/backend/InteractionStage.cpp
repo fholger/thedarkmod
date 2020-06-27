@@ -147,7 +147,7 @@ void InteractionStage::Init() {
 
 	qglGenBuffers( 1, &poissonSamplesUbo );
 	qglBindBuffer( GL_UNIFORM_BUFFER, poissonSamplesUbo );
-	qglBufferData( GL_UNIFORM_BUFFER, 150 * sizeof(idVec2), nullptr, GL_STATIC_DRAW );
+	qglBufferData( GL_UNIFORM_BUFFER, 0, nullptr, GL_STATIC_DRAW );
 }
 
 void InteractionStage::Shutdown() {
