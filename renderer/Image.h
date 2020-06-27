@@ -170,6 +170,9 @@ public:
 	// May start a background image read.
 	void		Bind();
 
+	// checks if the texture is currently bound to the specified texture unit
+	bool		IsBound( int textureUnit ) const;
+
 	// deletes the texture object, but leaves the structure so it can be reloaded
 	void		PurgeImage( bool purgeCpuData = true );
 

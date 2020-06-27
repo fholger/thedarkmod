@@ -33,7 +33,7 @@ StencilShadowStage::StencilShadowStage( DrawBatchExecutor *drawBatchExecutor ) {
 void StencilShadowStage::Init() {
 	idDict defines;
 	defines.Set( "MAX_SHADER_PARAMS", idStr::Fmt("%d", drawBatchExecutor->MaxShaderParamsArraySize<ShaderParams>()) );
-	stencilShadowShader = programManager->LoadFromFiles( "shadows_stencil", 
+	stencilShadowShader = programManager->LoadFromFiles( "stencilshadow", 
 		"stages/stencil/stencilshadow.vert.glsl",
 		"stages/stencil/stencilshadow.frag.glsl",
 		defines );
@@ -104,7 +104,7 @@ void StencilShadowStage::DrawSurfs( const drawSurf_t **surfs, size_t count ) {
 		return;
 	}
 
-	vertexCache.VertexPosition( surfs[0]->shadowCache, ATTRIB_SHADOW );
+	vertexCache.BindVertex( ATTRIB_SHADOW );
 
 	DrawBatch<ShaderParams> drawBatch = drawBatchExecutor->BeginBatch<ShaderParams>();
 	uint paramsIdx = 0;

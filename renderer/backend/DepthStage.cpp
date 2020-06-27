@@ -76,7 +76,7 @@ DepthStage::DepthStage( DrawBatchExecutor* drawBatchExecutor )
 
 void DepthStage::Init() {
 	uint maxShaderParamsArraySize = drawBatchExecutor->MaxShaderParamsArraySize<ShaderParams>();
-	depthShader = programManager->LoadFromGenerator( "depth_pass", [=](GLSLProgram *program) { LoadShader(program, maxShaderParamsArraySize, false); } );
+	depthShader = programManager->LoadFromGenerator( "depth", [=](GLSLProgram *program) { LoadShader(program, maxShaderParamsArraySize, false); } );
 
 	if( GLAD_GL_ARB_bindless_texture ) {
 		depthShaderBindless = programManager->LoadFromGenerator( "depth_bindless", [=](GLSLProgram *program) { LoadShader(program, maxShaderParamsArraySize, true); } );
@@ -277,7 +277,7 @@ void DepthStage::CreateDrawCommands( const drawSurf_t *surf ) {
 }
 
 void DepthStage::IssueDrawCommand( const drawSurf_t *surf, const shaderStage_t *stage ) {
-	if( stage && !renderBackend->ShouldUseBindlessTextures() && stage->texture.image->texnum != backEnd.glState.tmu[0].current2DMap ) {
+	if( stage && !renderBackend->ShouldUseBindlessTextures() && !stage->texture.image->IsBound( 0 ) ) {
 		ExecuteDrawCalls();
 		stage->texture.image->Bind();
 	}

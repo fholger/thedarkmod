@@ -3,22 +3,22 @@
 #pragma tdm_include "stages/interaction/interaction.params.glsl"
 
 in vec4 attr_Position;
-in vec4	attr_TexCoord;     
-in vec3	attr_Tangent;     
-in vec3	attr_Bitangent;     
-in vec3	attr_Normal;  
-in vec4	attr_Color;
+in vec4 attr_TexCoord;
+in vec3 attr_Tangent;
+in vec3 attr_Bitangent;
+in vec3 attr_Normal;
+in vec4 attr_Color;
 in int attr_DrawId;
  
 out vec3 var_Position;
-out vec2 var_TexDiffuse; 
-out vec2 var_TexSpecular; 
+out vec2 var_TexDiffuse;
+out vec2 var_TexSpecular;
 out vec2 var_TexNormal;
-out vec4 var_TexLight; 
-out mat3 var_TangentBinormalNormalMatrix;  
-out vec4 var_Color; 
-out vec3 var_tc0;  
-out vec3 var_localViewDir;  
+out vec4 var_TexLight;
+out mat3 var_TangentBinormalNormalMatrix;
+out vec4 var_Color;
+out vec3 var_tc0;
+out vec3 var_localViewDir;
 out vec4 var_ClipPosition;
 flat out int var_DrawId;
 

@@ -65,7 +65,7 @@ void DrawBatchExecutor::ExecuteDrawVertBatch( int numDrawSurfs, GLuint uboIndex 
 	byte *shaderParamsContents = shaderParamsBuffer.CurrentWriteLocation();
 	uint shaderParamsCommitSize = numDrawSurfs * shaderParamsSize;
 	shaderParamsBuffer.Commit( shaderParamsCommitSize );
-	shaderParamsBuffer.BindRange( uboIndex, shaderParamsContents, shaderParamsCommitSize );
+	shaderParamsBuffer.BindRangeToIndexTarget( uboIndex, shaderParamsContents, shaderParamsCommitSize );
 
 	vertexCache.BindVertex();
 	vertexCache.BindIndex();
@@ -84,7 +84,7 @@ void DrawBatchExecutor::ExecuteDrawVertBatch( int numDrawSurfs, GLuint uboIndex 
 			}
 			backEnd.pc.c_vboIndexes += surf->numIndexes;
 		}
-		backEnd.pc.c_drawElements += ShouldUseMultiDraw() ? 1 : numDrawSurfs;
+		backEnd.pc.c_drawElements += numDrawSurfs;
 	}
 }
 
@@ -95,7 +95,7 @@ void DrawBatchExecutor::ExecuteShadowVertBatch( int numDrawSurfs, GLuint uboInde
 	byte *shaderParamsContents = shaderParamsBuffer.CurrentWriteLocation();
 	uint shaderParamsCommitSize = numDrawSurfs * shaderParamsSize;
 	shaderParamsBuffer.Commit( shaderParamsCommitSize );
-	shaderParamsBuffer.BindRange( uboIndex, shaderParamsContents, shaderParamsCommitSize );
+	shaderParamsBuffer.BindRangeToIndexTarget( uboIndex, shaderParamsContents, shaderParamsCommitSize );
 
 	vertexCache.BindVertex( ATTRIB_SHADOW );
 	vertexCache.BindIndex();
@@ -113,7 +113,7 @@ void DrawBatchExecutor::ExecuteShadowVertBatch( int numDrawSurfs, GLuint uboInde
 				backEnd.pc.c_shadowVertexes += surf->frontendGeo->numVerts;
 			}
 		}
-		backEnd.pc.c_shadowElements += ShouldUseMultiDraw() ? 1 : numDrawSurfs;
+		backEnd.pc.c_shadowElements += numDrawSurfs;
 	}
 }
 

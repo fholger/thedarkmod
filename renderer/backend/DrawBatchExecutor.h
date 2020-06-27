@@ -35,10 +35,11 @@ struct DrawBatch {
  * represents your UBO params structure. Note that this struct must adhere
  * to the std140 layout rules specified in the OpenGL specification. You
  * will receive a DrawBatch struct that contains two arrays - one for your
- * ShaderParams and one for the drawSurfs to render. Fill these arrays up
- * to the `maxBatchSize`, then call `ExecuteDrawVertBatch` or
- * `ExecuteShadowVertBatch`, depending on what you intend to draw, with
- * the actual number of surfs to draw.
+ * ShaderParams and one for the drawSurfs to render. For each surf you want
+ * to render, store the drawSurf_t* in batch.surfs[i] and the corresponding
+ * shader parameters in batch.shaderParams[i] (with i < `maxBatchSize`).
+ * Then call `ExecuteDrawVertBatch` or `ExecuteShadowVertBatch`, depending
+ * on what you intend to draw, with the actual number of surfs to draw.
  */
 class DrawBatchExecutor {
 public:
@@ -56,14 +57,14 @@ public:
 	void EndFrame();
 
 	template< typename ShaderParams >
-	uint MaxShaderParamsArraySize() {
+	uint MaxShaderParamsArraySize() const {
 		return maxUniformBlockSize / sizeof( ShaderParams );
 	}
 
 private:
 	static const uint MAX_SHADER_PARAMS_SIZE = 512;
 	
-    GpuBuffer shaderParamsBuffer;
+	GpuBuffer shaderParamsBuffer;
 	GpuBuffer drawCommandBuffer;
 	GLuint drawIdBuffer = 0;
 	bool drawIdVertexEnabled = false;

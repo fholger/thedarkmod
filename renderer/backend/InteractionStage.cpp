@@ -463,9 +463,9 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 	}
 
 	if (currentIndex > 0 && !renderBackend->ShouldUseBindlessTextures()) {
-		if (backEnd.glState.tmu[TU_NORMAL].current2DMap != din->bumpImage->texnum
-			|| backEnd.glState.tmu[TU_DIFFUSE].current2DMap != din->diffuseImage->texnum
-			|| backEnd.glState.tmu[TU_SPECULAR].current2DMap != din->specularImage->texnum) {
+		if (!din->bumpImage->IsBound( TU_NORMAL )
+			|| !din->diffuseImage->IsBound( TU_DIFFUSE )
+			|| !din->specularImage->IsBound( TU_SPECULAR ) ) {
 
 			// change in textures, execute previous draw calls
 			ExecuteDrawCalls();

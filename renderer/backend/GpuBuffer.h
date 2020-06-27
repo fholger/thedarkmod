@@ -45,9 +45,9 @@ public:
 
 	void Commit( GLuint numBytes );
 	
-	void BindRange( GLuint index, byte *offset, GLuint size );
+	void BindRangeToIndexTarget( GLuint index, byte *offset, GLuint size );
 	void Bind();
-	const void * BufferOffset( const void *offset );
+	const void * BufferOffset( const void *pointer );
 
 	void SwitchFrame();
 

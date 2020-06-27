@@ -1432,6 +1432,21 @@ void idImage::Bind() {
 	}
 }
 
+bool idImage::IsBound( int textureUnit ) const {
+	if ( texnum == TEXTURE_NOT_LOADED ) {
+		return false;
+	}
+
+	tmu_t *tmu = &backEnd.glState.tmu[textureUnit];
+	if ( type == TT_2D ) {
+		return tmu->current2DMap == texnum;
+	} else if ( type == TT_CUBIC ) {
+		return tmu->currentCubeMap == texnum;
+	}
+
+	return false;
+}
+
 /*
 =============
 RB_UploadScratchImage

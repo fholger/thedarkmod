@@ -101,7 +101,7 @@ void RenderBackend::DrawView( const viewDef_t *viewDef ) {
 	processed = RB_STD_DrawShaderPasses( drawSurfs, numDrawSurfs );
 
 	// fog and blend lights
-	void RB_STD_FogAllLights( bool translucent );
+	extern void RB_STD_FogAllLights( bool translucent );
 	RB_STD_FogAllLights( false );
 
 	// refresh fog and blend status 
@@ -135,14 +135,14 @@ bool RenderBackend::ShouldUseBindlessTextures() const {
 }
 
 void RenderBackend::DrawInteractionsWithShadowMapping(viewLight_t *vLight) {
-	void RB_GLSL_DrawInteractions_ShadowMap( const drawSurf_t *surf, bool clear = false );
+	extern void RB_GLSL_DrawInteractions_ShadowMap( const drawSurf_t *surf, bool clear );
 
 	GL_PROFILE( "DrawLight_ShadowMap" );
 
 	if ( vLight->lightShader->LightCastsShadows() ) {
 		RB_GLSL_DrawInteractions_ShadowMap( vLight->globalInteractions, true );
 		interactionStage.DrawInteractions( vLight, vLight->localInteractions );
-		RB_GLSL_DrawInteractions_ShadowMap( vLight->localInteractions );
+		RB_GLSL_DrawInteractions_ShadowMap( vLight->localInteractions, false );
 	} else {
 		interactionStage.DrawInteractions( vLight, vLight->localInteractions );
 	}
@@ -213,7 +213,7 @@ void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
 
 	if ( r_shadows.GetInteger() == 2 ) {
 		if ( r_shadowMapSinglePass.GetBool() ) {
-			void RB_ShadowMap_RenderAllLights();
+			extern void RB_ShadowMap_RenderAllLights();
 			RB_ShadowMap_RenderAllLights();
 		}
 	}

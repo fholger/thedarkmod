@@ -100,7 +100,7 @@ void GpuBuffer::Commit( GLuint numBytes ) {
 	bytesCommittedInCurrentFrame += alignedSize;
 }
 
-void GpuBuffer::BindRange( GLuint index, byte *offset, GLuint size ) {
+void GpuBuffer::BindRangeToIndexTarget( GLuint index, byte *offset, GLuint size ) {
 	GLintptr mapOffset = offset - bufferContents;
 	assert(mapOffset >= 0 && mapOffset < totalSize);
 	qglBindBufferRange( type, index, bufferObject, mapOffset, size );
@@ -110,8 +110,8 @@ void GpuBuffer::Bind() {
 	qglBindBuffer(type, bufferObject);
 }
 
-const void * GpuBuffer::BufferOffset( const void *offset ) {
-	GLintptr mapOffset = static_cast< const byte* >( offset ) - bufferContents;
+const void * GpuBuffer::BufferOffset( const void *pointer ) {
+	GLintptr mapOffset = static_cast< const byte* >( pointer ) - bufferContents;
 	assert(mapOffset >= 0 && mapOffset < totalSize);
 	return reinterpret_cast< const void* >( mapOffset );
 }
