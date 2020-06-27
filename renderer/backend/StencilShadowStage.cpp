@@ -60,8 +60,8 @@ void StencilShadowStage::DrawStencilShadows( viewLight_t *vLight, const drawSurf
 	GL_Cull( CT_TWO_SIDED );
 	stencilShadowShader->Activate();
 
-	std::vector<const drawSurf_t*> depthFailSurfs;
-	std::vector<const drawSurf_t*> depthPassSurfs;
+	idList<const drawSurf_t*> depthFailSurfs;
+	idList<const drawSurf_t*> depthPassSurfs;
 	for (const drawSurf_t *surf = shadowSurfs; surf; surf = surf->nextOnLight) {
 		if (!surf->shadowCache.IsValid()) {
 			continue;
@@ -69,20 +69,20 @@ void StencilShadowStage::DrawStencilShadows( viewLight_t *vLight, const drawSurf
 
 		bool external = r_useExternalShadows.GetInteger() && !(surf->dsFlags & DSF_VIEW_INSIDE_SHADOW);
 		if (external) {
-			depthPassSurfs.push_back( surf );
+			depthPassSurfs.AddGrow( surf );
 		} else {
-			depthFailSurfs.push_back( surf );
+			depthFailSurfs.AddGrow( surf );
 		}
 	}
 
 	// draw depth-fail stencil shadows
 	qglStencilOpSeparate( backEnd.viewDef->isMirror ? GL_FRONT : GL_BACK, GL_KEEP, GL_DECR_WRAP, GL_KEEP );
 	qglStencilOpSeparate( backEnd.viewDef->isMirror ? GL_BACK : GL_FRONT, GL_KEEP, GL_INCR_WRAP, GL_KEEP );
-	DrawSurfs( depthFailSurfs.data(), depthFailSurfs.size() );
+	DrawSurfs( depthFailSurfs.Ptr(), depthFailSurfs.Num() );
 	// draw traditional depth-pass stencil shadows
 	qglStencilOpSeparate( backEnd.viewDef->isMirror ? GL_FRONT : GL_BACK, GL_KEEP, GL_KEEP, GL_INCR_WRAP );
 	qglStencilOpSeparate( backEnd.viewDef->isMirror ? GL_BACK : GL_FRONT, GL_KEEP, GL_KEEP, GL_DECR_WRAP );
-	DrawSurfs( depthPassSurfs.data(), depthPassSurfs.size() );
+	DrawSurfs( depthPassSurfs.Ptr(), depthPassSurfs.Num() );
 
 	// reset state
 	GL_Cull( CT_FRONT_SIDED );

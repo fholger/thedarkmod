@@ -196,9 +196,9 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 	uniforms->cubic.Set( vLight->lightShader->IsCubicLight() ? 1 : 0 );
 	uniforms->globalLightOrigin.Set( vLight->globalLightOrigin );
 
-	std::vector<const drawSurf_t*> drawSurfs;
+	idList<const drawSurf_t *> drawSurfs;
 	for ( const drawSurf_t *surf = interactionSurfs; surf; surf = surf->nextOnLight) {
-		drawSurfs.push_back( surf );
+		drawSurfs.AddGrow( surf );
 	}
 	std::sort( drawSurfs.begin(), drawSurfs.end(), [](const drawSurf_t *a, const drawSurf_t *b) {
 		return a->material < b->material;
