@@ -29,6 +29,7 @@ RenderBackend *renderBackend = &renderBackendImpl;
 
 idCVar r_useNewBackend( "r_useNewBackend", "0", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Use experimental new backend" );
 idCVar r_useBindlessTextures("r_useBindlessTextures", "1", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Use experimental bindless texturing to reduce drawcall overhead (if supported by hardware)");
+idCVar r_useLightOcclusionQueries("r_useLightOcclusionQueries", "0", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "Perform GPU occlusion queries for each light to potentially skip shadow/interaction rendering");
 
 namespace {
 	void CreateLightgemFbo( FrameBuffer *fbo ) {
@@ -41,7 +42,8 @@ namespace {
 RenderBackend::RenderBackend() 
 	: depthStage( &drawBatchExecutor ),
 	  interactionStage( &drawBatchExecutor ),
-	  stencilShadowStage( &drawBatchExecutor )
+	  stencilShadowStage( &drawBatchExecutor ),
+	  occlusionStage( &drawBatchExecutor )
 {}
 
 void RenderBackend::Init() {
@@ -49,6 +51,7 @@ void RenderBackend::Init() {
 	depthStage.Init();
 	interactionStage.Init();
 	stencilShadowStage.Init();
+	occlusionStage.Init();
 
 	lightgemFbo = frameBuffers->CreateFromGenerator( "lightgem", CreateLightgemFbo );
 	qglGenBuffers( 3, lightgemPbos );
@@ -61,6 +64,7 @@ void RenderBackend::Init() {
 void RenderBackend::Shutdown() {
 	qglDeleteBuffers( 3, lightgemPbos );
 	
+	occlusionStage.Shutdown();
 	stencilShadowStage.Shutdown();
 	interactionStage.Shutdown();
 	depthStage.Shutdown();
@@ -265,6 +269,13 @@ void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
 		return;
 	}
 
+	// for each light, execute occlusion queries if enabled
+	if ( r_useLightOcclusionQueries.GetBool() ) {
+		for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
+			occlusionStage.TestOcclusion( vLight );
+		}
+	}
+
 	// for each light, perform adding and shadowing
 	for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
 		if ( vLight->lightShader->IsFogLight() || vLight->lightShader->IsBlendLight() ) {
@@ -275,6 +286,10 @@ void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
 		if ( !vLight->localInteractions && !vLight->globalInteractions && !vLight->translucentInteractions )
 			continue;
 
+		if ( r_useLightOcclusionQueries.GetBool() ) {
+			qglBeginConditionalRender( vLight->occlusionQuery, GL_QUERY_BY_REGION_WAIT );
+		}
+
 		backEnd.vLight = vLight;
 		if ( vLight->shadows == LS_MAPS ) {
 			DrawInteractionsWithShadowMapping( vLight );
@@ -283,12 +298,32 @@ void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
 		}
 
 		if ( r_skipTranslucent.GetBool() ) {
+			if ( r_useLightOcclusionQueries.GetBool() ) {
+				qglEndConditionalRender();
+			}
 			continue;
 		}
 		qglStencilFunc( GL_ALWAYS, 128, 255 );
 		backEnd.depthFunc = GLS_DEPTHFUNC_LESS;
 		interactionStage.DrawInteractions( vLight, vLight->translucentInteractions );
 		backEnd.depthFunc = GLS_DEPTHFUNC_EQUAL;
+
+		if ( r_useLightOcclusionQueries.GetBool() ) {
+			qglEndConditionalRender();
+		}
+	}
+
+	if ( r_useLightOcclusionQueries.GetBool() ) {
+		int numTotalLights = 0;
+		int numVisibleLights = 0;
+		for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
+			GLint result;
+			qglGetQueryObjectiv( vLight->occlusionQuery, GL_QUERY_RESULT, &result );
+			qglDeleteQueries(1, &vLight->occlusionQuery);
+			++numTotalLights;
+			numVisibleLights += result;
+		}
+		common->Printf("Total lights: %d - visible: %d\n", numTotalLights, numVisibleLights);
 	}
 
 	// disable stencil shadow test
