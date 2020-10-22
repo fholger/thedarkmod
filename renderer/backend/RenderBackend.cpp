@@ -27,9 +27,9 @@
 RenderBackend renderBackendImpl;
 RenderBackend *renderBackend = &renderBackendImpl;
 
-idCVar r_useNewBackend( "r_useNewBackend", "0", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Use experimental new backend" );
+idCVar r_useNewBackend( "r_useNewBackend", "1", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Use experimental new backend" );
 idCVar r_useBindlessTextures("r_useBindlessTextures", "1", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Use experimental bindless texturing to reduce drawcall overhead (if supported by hardware)");
-idCVar r_useLightOcclusionQueries("r_useLightOcclusionQueries", "0", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "Perform GPU occlusion queries for each light to potentially skip shadow/interaction rendering");
+idCVar r_useLightOcclusionQueries("r_useLightOcclusionQueries", "0", CVAR_RENDERER|CVAR_INTEGER|CVAR_ARCHIVE, "Perform GPU occlusion queries for each light to potentially skip shadow/interaction rendering");
 
 namespace {
 	void CreateLightgemFbo( FrameBuffer *fbo ) {
@@ -287,7 +287,7 @@ void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
 			continue;
 
 		if ( r_useLightOcclusionQueries.GetBool() ) {
-			qglBeginConditionalRender( vLight->occlusionQuery, GL_QUERY_BY_REGION_WAIT );
+			qglBeginConditionalRender( vLight->occlusionQuery, GL_QUERY_BY_REGION_NO_WAIT );
 		}
 
 		backEnd.vLight = vLight;
@@ -317,13 +317,18 @@ void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
 		int numTotalLights = 0;
 		int numVisibleLights = 0;
 		for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
-			GLint result;
-			qglGetQueryObjectiv( vLight->occlusionQuery, GL_QUERY_RESULT, &result );
+			if ( r_useLightOcclusionQueries.GetInteger() > 1 ) {
+				++numTotalLights;
+				GLint result;
+				qglGetQueryObjectiv( vLight->occlusionQuery, GL_QUERY_RESULT, &result );
+				numVisibleLights += result;
+			}
 			qglDeleteQueries(1, &vLight->occlusionQuery);
-			++numTotalLights;
-			numVisibleLights += result;
 		}
-		common->Printf("Total lights: %d - visible: %d\n", numTotalLights, numVisibleLights);
+
+		if ( r_useLightOcclusionQueries.GetInteger() > 1 ) {
+			common->Printf("Total lights: %d - visible: %d\n", numTotalLights, numVisibleLights);
+		}
 	}
 
 	// disable stencil shadow test
