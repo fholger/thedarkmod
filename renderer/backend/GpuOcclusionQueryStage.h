@@ -16,21 +16,27 @@
 
 #include "DrawBatchExecutor.h"
 
-class LightOcclusionQueryStage
+extern idCVar r_useGpuOcclusionQueries;
+
+class GpuOcclusionQueryStage
 {
 public:
-	LightOcclusionQueryStage( DrawBatchExecutor *drawBatchExecutor );
+	GpuOcclusionQueryStage( DrawBatchExecutor *drawBatchExecutor );
 
 	void Init();
 	void Shutdown();
 
-	void TestOcclusion( viewLight_t *vLight );
+	void TestOcclusion( const viewDef_t *viewDef );
+	void FetchResults( const viewDef_t *viewDef );
 
 private:
 	struct ShaderParams;
 
 	DrawBatchExecutor *drawBatchExecutor;
 	GLSLProgram *occlusionShader = nullptr;
+	GLuint visibilityBuffer = 0;
+	int *visibilityMarkers = nullptr;
+	GLsync occlusionRenderSync = nullptr;
 
 	uint currentIndex = 0;
 	DrawBatch<ShaderParams> drawBatch;

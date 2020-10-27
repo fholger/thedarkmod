@@ -235,6 +235,9 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 			if ( surf->dsFlags & DSF_SHADOW_MAP_ONLY ) {
 				continue;
 			}
+			if ( !surf->space->visible ) {
+				continue;
+			}
 			if ( !surf->ambientCache.IsValid() ) {
 				common->Warning( "Found invalid ambientCache!" );
 				continue;

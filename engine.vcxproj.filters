@@ -1297,7 +1297,7 @@
     <ClInclude Include="sys\sys_padinput.h">
       <Filter>Sys</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\backend\LightOcclusionQueryStage.h">
+    <ClInclude Include="renderer\backend\GpuOcclusionQueryStage.h">
       <Filter>Renderer\Backend</Filter>
     </ClInclude>
   </ItemGroup>
@@ -3043,7 +3043,7 @@
     <ClCompile Include="sys\sys_padinput.cpp">
       <Filter>Sys</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\backend\LightOcclusionQueryStage.cpp">
+    <ClCompile Include="renderer\backend\GpuOcclusionQueryStage.cpp">
       <Filter>Renderer\Backend</Filter>
     </ClCompile>
   </ItemGroup>

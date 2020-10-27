@@ -15,35 +15,66 @@
 #include "precompiled.h"
 
 #include "../tr_local.h"
-#include "LightOcclusionQueryStage.h"
+#include "GpuOcclusionQueryStage.h"
 #include "RenderBackend.h"
 #include "../Profiling.h"
 #include "../glsl.h"
 #include "../GLSLProgramManager.h"
 
+idCVar r_useGpuOcclusionQueries("r_useGpuOcclusionQueries", "0", CVAR_RENDERER|CVAR_INTEGER|CVAR_ARCHIVE, "Perform GPU occlusion queries for each light to potentially skip shadow/interaction rendering");
 
-struct LightOcclusionQueryStage::ShaderParams {
+const int MAX_ENTITIES = 65536;
+const int BUFFER_SIZE = MAX_ENTITIES * sizeof(uint32_t);
+
+struct GpuOcclusionQueryStage::ShaderParams {
 	idMat4 modelViewMatrix;
+	int entityIndex;
+	int padding[3];
 };
 
-LightOcclusionQueryStage::LightOcclusionQueryStage( DrawBatchExecutor* drawBatchExecutor )
+GpuOcclusionQueryStage::GpuOcclusionQueryStage( DrawBatchExecutor* drawBatchExecutor )
 	: drawBatchExecutor(drawBatchExecutor)
 {
 }
 
-void LightOcclusionQueryStage::Init() {
+void GpuOcclusionQueryStage::Init() {
 	uint maxShaderParamsArraySize = drawBatchExecutor->MaxShaderParamsArraySize<ShaderParams>();
 	idDict defines;
 	defines.Set( "MAX_SHADER_PARAMS", idStr::FormatNumber( maxShaderParamsArraySize ) );
 	occlusionShader = programManager->LoadFromFiles( "occlusion", "stages/occlusion/occlusion.vert.glsl", "stages/occlusion/occlusion.frag.glsl", defines );
+
+	qglGenBuffers(1, &visibilityBuffer);
+	qglBindBuffer(GL_SHADER_STORAGE_BUFFER, visibilityBuffer);
+	qglBufferStorage(GL_SHADER_STORAGE_BUFFER, BUFFER_SIZE, nullptr, GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT|GL_MAP_COHERENT_BIT);
+	visibilityMarkers = (int *)qglMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, BUFFER_SIZE, GL_MAP_READ_BIT|GL_MAP_WRITE_BIT|GL_MAP_PERSISTENT_BIT|GL_MAP_COHERENT_BIT);
 }
 
-void LightOcclusionQueryStage::Shutdown() {}
+void GpuOcclusionQueryStage::Shutdown() {
+	qglBindBuffer(GL_SHADER_STORAGE_BUFFER, visibilityBuffer);
+	qglUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+	qglBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	qglDeleteBuffers(1, &visibilityBuffer);
+	visibilityBuffer = 0;
+	visibilityMarkers = nullptr;
+}
 
-void LightOcclusionQueryStage::TestOcclusion( viewLight_t *vLight ) {
-	GL_PROFILE( "LightOcclusionQueryStage" );
+void GpuOcclusionQueryStage::TestOcclusion( const viewDef_t *viewDef ) {
+	GL_PROFILE( "GpuOcclusionQueryStage" );
+	if ( viewDef->numDrawSurfs < 100 ) {
+		return;
+	}
 
-	qglGenQueries(1, &vLight->occlusionQuery);
+	memset(visibilityMarkers, 0, BUFFER_SIZE);
+	int index = 0;
+	for ( viewEntity_t *vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
+		vEntity->occluderIndex = index++;		
+		vEntity->visible = true;
+	}
+	for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
+		vLight->visible = true;
+	}
+	
+	qglBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, visibilityBuffer, 0, BUFFER_SIZE);
 	occlusionShader->Activate();
 
 	// decal surfaces may enable polygon offset
@@ -53,18 +84,9 @@ void LightOcclusionQueryStage::TestOcclusion( viewLight_t *vLight ) {
 
 	vertexCache.BindVertex();
 
-	idList<drawSurf_t *> drawSurfs;
-	for (drawSurf_t *surf = vLight->globalInteractions; surf; surf = surf->nextOnLight) {
-		drawSurfs.AddGrow( surf );
-	}
-	for (drawSurf_t *surf = vLight->localInteractions; surf; surf = surf->nextOnLight) {
-		drawSurfs.AddGrow( surf );
-	}
-
-	qglBeginQuery(GL_ANY_SAMPLES_PASSED, vLight->occlusionQuery);
-
 	BeginDrawBatch();
-	for ( const drawSurf_t *drawSurf : drawSurfs ) {
+	for ( int i = 0; i < viewDef->numDrawSurfs; ++i ) {
+		const drawSurf_t *drawSurf = viewDef->drawSurfs[i];
 		if ( !ShouldDrawSurf( drawSurf ) ) {
 			continue;
 		}
@@ -72,10 +94,59 @@ void LightOcclusionQueryStage::TestOcclusion( viewLight_t *vLight ) {
 	}
 	ExecuteDrawCalls();
 
-	qglEndQuery(GL_ANY_SAMPLES_PASSED);
+	occlusionRenderSync = qglFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+	GL_State( GLS_DEPTHFUNC_LESS );
 }
 
-bool LightOcclusionQueryStage::ShouldDrawSurf(const drawSurf_t *surf) const {
+void GpuOcclusionQueryStage::FetchResults( const viewDef_t *viewDef ) {
+	GL_PROFILE( "FetchOcclusionResults" )
+	if ( occlusionRenderSync == nullptr ) {
+		return;
+	}
+	
+	GLenum result = qglClientWaitSync( occlusionRenderSync, 0, 0 );
+	while( result != GL_ALREADY_SIGNALED && result != GL_CONDITION_SATISFIED ) {
+		result = qglClientWaitSync( occlusionRenderSync, GL_SYNC_FLUSH_COMMANDS_BIT, 1000000 );
+		if( result == GL_WAIT_FAILED ) {
+			assert( !"glClientWaitSync failed" );
+			break;
+		}
+	}
+	qglDeleteSync( occlusionRenderSync );
+	occlusionRenderSync = nullptr;
+
+	int entitiesTotal = 0;
+	int entitiesOccluded = 0;
+	for ( viewEntity_t *vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
+		vEntity->visible = visibilityMarkers[vEntity->occluderIndex];
+		++entitiesTotal;
+		entitiesOccluded += (!vEntity->visible);
+	}
+
+	int lightsTotal = 0;
+	int lightsOccluded = 0;
+	for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
+		vLight->visible = false;		
+		for ( const drawSurf_t *surf = vLight->globalInteractions; surf; surf = surf->nextOnLight ) {
+			vLight->visible |= surf->space->visible;
+		}
+		for ( const drawSurf_t *surf = vLight->localInteractions; surf; surf = surf->nextOnLight ) {
+			vLight->visible |= surf->space->visible;
+		}
+		for ( const drawSurf_t *surf = vLight->translucentInteractions; surf; surf = surf->nextOnLight ) {
+			vLight->visible |= surf->space->visible;
+		}
+		++lightsTotal;
+		lightsOccluded += (!vLight->visible);
+	}
+
+	if ( r_useGpuOcclusionQueries.GetInteger() > 1 ) {
+		common->Printf( "%d / %d entities occluded.\n", entitiesOccluded, entitiesTotal );
+		common->Printf( "%d / %d lights occluded.\n", lightsOccluded, lightsTotal );
+	}
+}
+
+bool GpuOcclusionQueryStage::ShouldDrawSurf(const drawSurf_t *surf) const {
     const idMaterial *shader = surf->material;
 
     if ( !shader->IsDrawn() ) {
@@ -117,7 +188,7 @@ bool LightOcclusionQueryStage::ShouldDrawSurf(const drawSurf_t *surf) const {
     return stage != shader->GetNumStages();
 }
 
-void LightOcclusionQueryStage::DrawSurf( const drawSurf_t *surf ) {
+void GpuOcclusionQueryStage::DrawSurf( const drawSurf_t *surf ) {
 	if ( surf->space->weaponDepthHack ) {
 		// this is a state change, need to finish any previous calls
 		ExecuteDrawCalls();
@@ -147,9 +218,10 @@ void LightOcclusionQueryStage::DrawSurf( const drawSurf_t *surf ) {
 	}
 }
 
-void LightOcclusionQueryStage::IssueDrawCommand( const drawSurf_t *surf ) {
+void GpuOcclusionQueryStage::IssueDrawCommand( const drawSurf_t *surf ) {
 	ShaderParams &params = drawBatch.shaderParams[currentIndex];
 
+	params.entityIndex = surf->space->occluderIndex;
 	memcpy( params.modelViewMatrix.ToFloatPtr(), surf->space->modelViewMatrix, sizeof(idMat4) );
 
 	drawBatch.surfs[currentIndex] = surf;
@@ -159,12 +231,12 @@ void LightOcclusionQueryStage::IssueDrawCommand( const drawSurf_t *surf ) {
 	}
 }
 
-void LightOcclusionQueryStage::BeginDrawBatch() {
+void GpuOcclusionQueryStage::BeginDrawBatch() {
 	currentIndex = 0;
 	drawBatch = drawBatchExecutor->BeginBatch<ShaderParams>();
 }
 
-void LightOcclusionQueryStage::ExecuteDrawCalls() {
+void GpuOcclusionQueryStage::ExecuteDrawCalls() {
 	if (currentIndex == 0) {
 		return;
 	}

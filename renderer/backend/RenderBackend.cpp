@@ -29,7 +29,6 @@ RenderBackend *renderBackend = &renderBackendImpl;
 
 idCVar r_useNewBackend( "r_useNewBackend", "1", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Use experimental new backend" );
 idCVar r_useBindlessTextures("r_useBindlessTextures", "1", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Use experimental bindless texturing to reduce drawcall overhead (if supported by hardware)");
-idCVar r_useLightOcclusionQueries("r_useLightOcclusionQueries", "0", CVAR_RENDERER|CVAR_INTEGER|CVAR_ARCHIVE, "Perform GPU occlusion queries for each light to potentially skip shadow/interaction rendering");
 
 namespace {
 	void CreateLightgemFbo( FrameBuffer *fbo ) {
@@ -112,8 +111,23 @@ void RenderBackend::DrawView( const viewDef_t *viewDef ) {
 	if ( viewDef->viewEntitys ) {
 		// fill the depth buffer and clear color buffer to black except on subviews
 		depthStage.DrawDepth( viewDef, drawSurfs, numDrawSurfs );
+
+		for ( viewEntity_t *vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
+			vEntity->visible = true;
+		}
+		for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
+			vLight->visible = true;
+		}
+		if ( r_useGpuOcclusionQueries.GetBool() ) {
+			occlusionStage.TestOcclusion( viewDef );
+		}
+
 		if( ambientOcclusion->ShouldEnableForCurrentView() ) {
 			ambientOcclusion->ComputeSSAOFromDepth();
+		}
+
+		if ( r_useGpuOcclusionQueries.GetBool() ) {
+			occlusionStage.FetchResults( viewDef );
 		}
 		DrawShadowsAndInteractions( viewDef );
 	}
@@ -269,13 +283,6 @@ void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
 		return;
 	}
 
-	// for each light, execute occlusion queries if enabled
-	if ( r_useLightOcclusionQueries.GetBool() ) {
-		for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
-			occlusionStage.TestOcclusion( vLight );
-		}
-	}
-
 	// for each light, perform adding and shadowing
 	for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
 		if ( vLight->lightShader->IsFogLight() || vLight->lightShader->IsBlendLight() ) {
@@ -286,8 +293,8 @@ void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
 		if ( !vLight->localInteractions && !vLight->globalInteractions && !vLight->translucentInteractions )
 			continue;
 
-		if ( r_useLightOcclusionQueries.GetBool() ) {
-			qglBeginConditionalRender( vLight->occlusionQuery, GL_QUERY_BY_REGION_NO_WAIT );
+		if ( r_useGpuOcclusionQueries.GetBool() && !vLight->visible ) {
+			continue;
 		}
 
 		backEnd.vLight = vLight;
@@ -298,37 +305,12 @@ void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
 		}
 
 		if ( r_skipTranslucent.GetBool() ) {
-			if ( r_useLightOcclusionQueries.GetBool() ) {
-				qglEndConditionalRender();
-			}
 			continue;
 		}
 		qglStencilFunc( GL_ALWAYS, 128, 255 );
 		backEnd.depthFunc = GLS_DEPTHFUNC_LESS;
 		interactionStage.DrawInteractions( vLight, vLight->translucentInteractions );
 		backEnd.depthFunc = GLS_DEPTHFUNC_EQUAL;
-
-		if ( r_useLightOcclusionQueries.GetBool() ) {
-			qglEndConditionalRender();
-		}
-	}
-
-	if ( r_useLightOcclusionQueries.GetBool() ) {
-		int numTotalLights = 0;
-		int numVisibleLights = 0;
-		for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
-			if ( r_useLightOcclusionQueries.GetInteger() > 1 ) {
-				++numTotalLights;
-				GLint result;
-				qglGetQueryObjectiv( vLight->occlusionQuery, GL_QUERY_RESULT, &result );
-				numVisibleLights += result;
-			}
-			qglDeleteQueries(1, &vLight->occlusionQuery);
-		}
-
-		if ( r_useLightOcclusionQueries.GetInteger() > 1 ) {
-			common->Printf("Total lights: %d - visible: %d\n", numTotalLights, numVisibleLights);
-		}
 	}
 
 	// disable stencil shadow test

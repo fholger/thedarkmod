@@ -463,7 +463,7 @@
     <ClInclude Include="idlib\precompiled.h" />
     <ClInclude Include="renderer\AmbientOcclusionStage.h" />
     <ClInclude Include="renderer\backend\GpuBuffer.h" />
-    <ClInclude Include="renderer\backend\LightOcclusionQueryStage.h" />
+    <ClInclude Include="renderer\backend\GpuOcclusionQueryStage.h" />
     <ClInclude Include="renderer\BloomStage.h" />
     <ClInclude Include="renderer\backend\DrawBatchExecutor.h" />
     <ClInclude Include="renderer\backend\StencilShadowStage.h" />
@@ -1016,7 +1016,7 @@
     </ClCompile>
     <ClCompile Include="renderer\AmbientOcclusionStage.cpp" />
     <ClCompile Include="renderer\backend\GpuBuffer.cpp" />
-    <ClCompile Include="renderer\backend\LightOcclusionQueryStage.cpp" />
+    <ClCompile Include="renderer\backend\GpuOcclusionQueryStage.cpp" />
     <ClCompile Include="renderer\BloomStage.cpp" />
     <ClCompile Include="renderer\backend\DrawBatchExecutor.cpp" />
     <ClCompile Include="renderer\backend\StencilShadowStage.cpp" />

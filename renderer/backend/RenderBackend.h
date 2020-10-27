@@ -16,7 +16,7 @@
 #include "DrawBatchExecutor.h"
 #include "DepthStage.h"
 #include "InteractionStage.h"
-#include "LightOcclusionQueryStage.h"
+#include "GpuOcclusionQueryStage.h"
 #include "StencilShadowStage.h"
 #include "../tr_local.h"
 
@@ -44,7 +44,7 @@ private:
 	DepthStage depthStage;
 	InteractionStage interactionStage;
 	StencilShadowStage stencilShadowStage;
-	LightOcclusionQueryStage occlusionStage;
+	GpuOcclusionQueryStage occlusionStage;
 
 	FrameBuffer *lightgemFbo = nullptr;
 	GLuint lightgemPbos[3] = { 0 };

@@ -398,7 +398,7 @@ typedef struct viewLight_s {
 	/*const */struct drawSurf_s	*globalInteractions;		// get shadows from everything
 	/*const */struct drawSurf_s	*translucentInteractions;	// get shadows from everything
 
-	GLuint					occlusionQuery;
+	bool					visible;
 } viewLight_t;
 
 struct preparedSurf_t {
@@ -436,6 +436,8 @@ typedef struct viewEntity_s {
 	preparedSurf_t		*preparedSurfs;
 
 	int					drawCalls;				// perf tool
+	int					occluderIndex;
+	bool				visible;
 } viewEntity_t;
 
 // viewDefs are allocated on the frame temporary stack memory
