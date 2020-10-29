@@ -43,7 +43,7 @@ void StencilShadowStage::Init() {
 void StencilShadowStage::Shutdown() {}
 
 void StencilShadowStage::DrawStencilShadows( viewLight_t *vLight, const drawSurf_t *shadowSurfs ) {
-	if ( !shadowSurfs || !r_shadows.GetInteger() ) {
+	if ( !shadowSurfs || !r_shadows.GetInteger() || vLight->noShadows ) {
 		return;
 	}
 	GL_PROFILE( "StencilShadowPass" );

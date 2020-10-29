@@ -29,6 +29,7 @@ RenderBackend *renderBackend = &renderBackendImpl;
 
 idCVar r_useNewBackend( "r_useNewBackend", "0", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Use experimental new backend" );
 idCVar r_useBindlessTextures("r_useBindlessTextures", "1", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Use experimental bindless texturing to reduce drawcall overhead (if supported by hardware)");
+idCVar r_maxShadowCastingLights("r_maxShadowCastingLights", "100", CVAR_RENDERER|CVAR_INTEGER|CVAR_ARCHIVE, "The maximum number of lights that are allowed to cast shadows in a single frame");
 
 namespace {
 	void CreateLightgemFbo( FrameBuffer *fbo ) {
@@ -251,6 +252,19 @@ void RenderBackend::DrawInteractionsWithStencilShadows( const viewDef_t *viewDef
 
 void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
 	GL_PROFILE( "LightInteractions" );
+
+	idList<viewLight_t*> lights;
+	for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
+		lights.AddGrow( vLight );
+	}
+	std::sort( lights.begin(), lights.end(), [](viewLight_t *a, viewLight_t *b) {
+		if (a->noShadows) return false;
+		if (b->noShadows) return true;
+		return a->scissorRect.GetArea() > b->scissorRect.GetArea();
+	} );
+	for ( int i = r_maxShadowCastingLights.GetInteger(); i < lights.Num(); ++i ) {
+		lights[i]->noShadows = true;
+	}
 
 	if ( r_shadows.GetInteger() == 2 ) {
 		if ( r_shadowMapSinglePass.GetBool() ) {
