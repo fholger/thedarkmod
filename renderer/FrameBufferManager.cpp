@@ -138,6 +138,11 @@ void FrameBufferManager::LeavePrimary(bool copyToDefault) {
 
 	currentRenderFbo = targetFbo;
 
+	targetFbo->Bind();
+	GL_ViewportRelative( 0, 0, 1, 1 );
+	GL_ScissorRelative( 0, 0, 1, 1 );
+	qglClear( GL_COLOR_BUFFER_BIT );
+	
 	if (copyToDefault) {
 		if ( r_multiSamples.GetInteger() > 1 ) {
 			ResolvePrimary();
@@ -150,10 +155,6 @@ void FrameBufferManager::LeavePrimary(bool copyToDefault) {
 			qglFinish();
 		}
 	}
-
-	targetFbo->Bind();
-	GL_ViewportRelative( 0, 0, 1, 1 );
-	GL_ScissorRelative( 0, 0, 1, 1 );
 }
 
 void FrameBufferManager::EnterShadowStencil() {
