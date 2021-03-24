@@ -92,7 +92,8 @@ void FrameBufferManager::BeginFrame() {
 		r_fboColorBits.IsModified() ||
 		r_fboDepthBits.IsModified() ||
 		r_shadows.IsModified() ||
-		r_shadowMapSize.IsModified()
+		r_shadowMapSize.IsModified() ||
+		r_shadowMapBits.IsModified()
 	) {
 		r_multiSamples.ClearModified();
 		r_fboResolution.ClearModified();
@@ -100,6 +101,7 @@ void FrameBufferManager::BeginFrame() {
 		r_fboDepthBits.ClearModified();
 		r_shadows.ClearModified();
 		r_shadowMapSize.ClearModified();
+		r_shadowMapBits.ClearModified();
 
 		// something FBO-related has changed, let's recreate everything from scratch
 		UpdateResolutionAndFormats();
@@ -342,7 +344,13 @@ void FrameBufferManager::CreateStencilShadow( FrameBuffer *shadow ) {
 
 void FrameBufferManager::CreateMapsShadow( FrameBuffer *shadow ) {
 	shadow->Init( shadowAtlasSize, shadowAtlasSize );
-	globalImages->shadowAtlas->GenerateAttachment( shadowAtlasSize, shadowAtlasSize, GL_DEPTH_COMPONENT32F, GL_NEAREST );
+	GLuint format = GL_DEPTH_COMPONENT16;
+	if (r_shadowMapBits.GetInteger() == 24)
+		format = GL_DEPTH_COMPONENT24;
+	if (r_shadowMapBits.GetInteger() == 32)
+		format = GL_DEPTH_COMPONENT32F;
+	
+	globalImages->shadowAtlas->GenerateAttachment( shadowAtlasSize, shadowAtlasSize, format, GL_NEAREST );
 	shadow->AddDepthRenderTexture( globalImages->shadowAtlas );
 	for ( int i = 0; i < 2; i++ ) { // 2x full size pages
 		ShadowAtlasPages[i].x = 0;

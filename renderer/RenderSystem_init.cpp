@@ -240,6 +240,7 @@ idCVar r_fboColorBits( "r_fboColorBits", "64", CVAR_RENDERER | CVAR_INTEGER | CV
 idCVarBool r_fboSRGB( "r_fboSRGB", "0", CVAR_RENDERER | CVAR_ARCHIVE, "Use framebuffer-level gamma correction" );
 idCVar r_fboDepthBits( "r_fboDepthBits", "24", CVAR_RENDERER | CVAR_INTEGER | CVAR_ARCHIVE, "16, 24, 32" );
 idCVarInt r_shadowMapSize( "r_shadowMapSize", "1024", CVAR_RENDERER | CVAR_INTEGER | CVAR_ARCHIVE, "Shadow map texture resolution" );
+idCVar r_shadowMapBits("r_shadowMapBits", "32", CVAR_RENDERER|CVAR_INTEGER|CVAR_ARCHIVE, "Shadow map depth bits");
 
 // relocate stgatilov ROQ options
 idCVar r_cinematic_legacyRoq( "r_cinematic_legacyRoq", "0", CVAR_RENDERER | CVAR_INTEGER | CVAR_ARCHIVE,
