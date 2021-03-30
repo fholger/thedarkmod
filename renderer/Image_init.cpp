@@ -1687,6 +1687,15 @@ void idImageManager::BeginLevelLoad() {
 	}
 }
 
+void R_LoadImageData(idImage &image);
+void R_UploadImageData( idImage& image );
+
+void R_LoadSingleImage(idImage *image) {
+	R_LoadImageData(*image);
+}
+
+REGISTER_PARALLEL_JOB( R_LoadSingleImage, "R_LoadSingleImage" );
+
 /*
 ====================
 EndLevelLoad
@@ -1701,6 +1710,7 @@ blocking load on demand
 preload low mip levels, background load remainder on demand
 ====================
 */
+idCVar image_levelLoadParallel("image_levelLoadParallel", "1", CVAR_BOOL|CVAR_ARCHIVE, "Load images from disk in parallel");
 void idImageManager::EndLevelLoad() {
 	const int start = Sys_Milliseconds();
 	insideLevelLoad = false;
@@ -1727,6 +1737,8 @@ void idImageManager::EndLevelLoad() {
 	}
 	common->PacifierUpdate( LOAD_KEY_IMAGES_START, images.Num() / LOAD_KEY_IMAGE_GRANULARITY ); // grayman #3763
 
+	idList<idImage*> imagesToLoad;
+	backEnd.pc.textureUploadTime = 0;
 	// load the ones we do need, if we are preloading
 	for ( int i = 0 ; i < images.Num() ; i++ ) {
 		idImage	*image = images[ i ];
@@ -1737,12 +1749,34 @@ void idImageManager::EndLevelLoad() {
 		if ( image->levelLoadReferenced && ( image->texnum == idImage::TEXTURE_NOT_LOADED ) && image_preload.GetBool() ) {
 			//common->Printf( "Loading image %d: %s\n",i,image->imgName.c_str() );
 			loadCount++;
-			image->ActuallyLoadImage();
+			imagesToLoad.AddGrow( image );
+			//image->ActuallyLoadImage();
+		}
+	}
+
+	const int BATCH_SIZE = 32;
+	for ( int curBatch = 0; curBatch < imagesToLoad.Num(); curBatch += BATCH_SIZE ) {
+		for ( int i = curBatch; i < imagesToLoad.Num() && i < curBatch + BATCH_SIZE; ++i ) {
+			idImage *image = imagesToLoad[i];
+			if (image_levelLoadParallel.GetBool()) {
+				tr.frontEndJobList->AddJob((jobRun_t)R_LoadSingleImage, image);
+			} else {
+				R_LoadImageData( *image );
+			}
 		}
 
-		// grayman #3763 - update the loading bar every LOAD_KEY_IMAGE_GRANULARITY images
-		if ( ( i % LOAD_KEY_IMAGE_GRANULARITY ) == 0 ) {
-			common->PacifierUpdate( LOAD_KEY_IMAGES_INTERIM, i );
+		if (image_levelLoadParallel.GetBool()) {
+			tr.frontEndJobList->Submit();
+			tr.frontEndJobList->Wait();
+		}
+
+		for ( int i = curBatch; i < imagesToLoad.Num() && i < curBatch + BATCH_SIZE; ++i ) {
+			idImage *image = imagesToLoad[i];
+			R_UploadImageData( *image );
+
+			if ( i % LOAD_KEY_IMAGE_GRANULARITY == 0 ) {
+				common->PacifierUpdate( LOAD_KEY_IMAGES_INTERIM, i );
+			}
 		}
 	}
 	const int end = Sys_Milliseconds();
