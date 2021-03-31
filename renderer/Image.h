@@ -422,6 +422,18 @@ public:
 
 extern idImageManager	*globalImages;		// pointer to global list for the rest of the system
 
+
+class PixelBuffer {
+public:
+	PixelBuffer( uint32_t sizeInBytes );
+	~PixelBuffer();
+
+	byte *Map();
+	void Unmap();
+private:
+	GLuint pbo = 0;
+	uint32_t size = 0;
+};
 /*
 ====================================================================
 
