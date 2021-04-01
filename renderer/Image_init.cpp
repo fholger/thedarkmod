@@ -1691,7 +1691,10 @@ void R_LoadImageData(idImage &image);
 void R_UploadImageData( idImage& image );
 
 void R_LoadSingleImage(idImage *image) {
-	R_LoadImageData(*image);
+	if ( !image->generatorFunction ) {
+		R_LoadImageData(*image);
+		image->backgroundLoadState = IS_LOADED;
+	}
 }
 
 REGISTER_PARALLEL_JOB( R_LoadSingleImage, "R_LoadSingleImage" );
@@ -1747,62 +1750,40 @@ void idImageManager::EndLevelLoad() {
 		}
 
 		if ( image->levelLoadReferenced && ( image->texnum == idImage::TEXTURE_NOT_LOADED ) && image_preload.GetBool() ) {
-			//common->Printf( "Loading image %d: %s\n",i,image->imgName.c_str() );
 			loadCount++;
-			if ( image_levelLoadParallel.GetBool() )
-				imagesToLoad.AddGrow( image );
-			else
-				image->ActuallyLoadImage();
-		}
-
-		if ( !image_levelLoadParallel.GetBool() && i % LOAD_KEY_IMAGE_GRANULARITY == 0 ) {
-			common->PacifierUpdate( LOAD_KEY_IMAGES_INTERIM, i );
+			imagesToLoad.AddGrow( image );
 		}
 	}
 
-	int uploadTime = 0;
-	int diskLoadWaitTime = 0;
-	if ( image_levelLoadParallel.GetBool() ) {
-		const int BATCH_SIZE = 16;
-		int lastBatch = 0;
-		for ( int curBatch = 0; curBatch < imagesToLoad.Num(); curBatch += BATCH_SIZE ) {
-			for ( int i = curBatch; i < imagesToLoad.Num() && i < curBatch + BATCH_SIZE; ++i ) {
+	const int BATCH_SIZE = 16;
+	for ( int curBatch = 0; curBatch < imagesToLoad.Num(); curBatch += BATCH_SIZE ) {
+		if ( image_levelLoadParallel.GetBool() ) {
+			for ( int i = curBatch + BATCH_SIZE; i < imagesToLoad.Num() && i < curBatch + 2*BATCH_SIZE; ++i ) {
 				idImage *image = imagesToLoad[i];
 				tr.frontEndJobList->AddJob((jobRun_t)R_LoadSingleImage, image);
 			}
 			tr.frontEndJobList->Submit();
-
-			int beforeUpload = Sys_Milliseconds();
-			if ( curBatch != 0 ) {
-				for ( int i = curBatch - BATCH_SIZE; i < curBatch; ++i ) {
-					idImage *image = imagesToLoad[i];
-					R_UploadImageData( *image );
-
-					if ( i % LOAD_KEY_IMAGE_GRANULARITY == 0 ) {
-						common->PacifierUpdate( LOAD_KEY_IMAGES_INTERIM, i );
-					}
-				}
-			}
-
-			lastBatch = curBatch;
-			int beforeDiskWait = Sys_Milliseconds();
-			tr.frontEndJobList->Wait();
-
-			uploadTime += (beforeDiskWait - beforeUpload);
-			diskLoadWaitTime += Sys_Milliseconds() - beforeDiskWait;
 		}
 
-		for ( int i = lastBatch; i < imagesToLoad.Num(); ++i ) {
+		for ( int i = curBatch; i < imagesToLoad.Num() && i < curBatch + BATCH_SIZE; ++i ) {
 			idImage *image = imagesToLoad[i];
-			R_UploadImageData( *image );
+			image->ActuallyLoadImage();
+
+			if ( i % LOAD_KEY_IMAGE_GRANULARITY == 0 ) {
+				common->PacifierUpdate( LOAD_KEY_IMAGES_INTERIM, i );
+			}
+		}
+
+		if ( image_levelLoadParallel.GetBool() ) {
+			tr.frontEndJobList->Wait();
 		}
 	}
+
 	const int end = Sys_Milliseconds();
 	common->Printf( "%5i purged from previous\n", purgeCount );
 	common->Printf( "%5i kept from previous\n", keepCount );
 	common->Printf( "%5i new loaded\n", loadCount );
 	common->Printf( "all images loaded in %5.1f seconds\n", ( end - start ) * 0.001f );
-	common->Printf( "Upload took %5.1f seconds, waiting for background disk load %5.1f\n", uploadTime * 0.001f, diskLoadWaitTime * 0.001f );
 	common->PacifierUpdate( LOAD_KEY_DONE, 0 ); // grayman #3763
 	common->Printf( "----------------------------------------\n" );
 }
