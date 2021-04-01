@@ -1711,36 +1711,6 @@ preload low mip levels, background load remainder on demand
 ====================
 */
 idCVar image_levelLoadParallel("image_levelLoadParallel", "1", CVAR_BOOL|CVAR_ARCHIVE, "Load images from disk in parallel");
-class ImageLoadThread : public idSysThread {
-public:
-	static const int MAX_WORK_AHEAD = 16;
-	
-	ImageLoadThread( idImage **images, int numImages ) : images(images), numImages(numImages) {}
-	
-	int Run() override {
-		for ( int i = 0; i < numImages; ++i ) {
-			idImage *image = images[i];
-			R_LoadImageData( *image );
-			image->backgroundLoadState = IS_LOADED;
-			imagesLoaded.Increment();
-
-			while ( i - imagesProcessed.GetValue() > MAX_WORK_AHEAD ) {
-				// do not work too far ahead of the main thread to limit the amount of RAM
-				// used by loaded images that have not yet been uploaded to the GPU
-				Sys_Yield();
-			}
-		}
-		return 0;
-	}
-
-	idSysInterlockedInteger imagesLoaded;
-	idSysInterlockedInteger imagesProcessed;
-
-private:
-	idImage **images;
-	int numImages;
-};
-
 void idImageManager::EndLevelLoad() {
 	const int start = Sys_Milliseconds();
 	insideLevelLoad = false;
@@ -1779,40 +1749,60 @@ void idImageManager::EndLevelLoad() {
 		if ( image->levelLoadReferenced && ( image->texnum == idImage::TEXTURE_NOT_LOADED ) && image_preload.GetBool() ) {
 			//common->Printf( "Loading image %d: %s\n",i,image->imgName.c_str() );
 			loadCount++;
-			imagesToLoad.AddGrow( image );
-		}
-	}
-
-	ImageLoadThread loadThread ( imagesToLoad.Ptr(), imagesToLoad.Num() );
-	if ( image_levelLoadParallel.GetBool() ) {
-		loadThread.StartThread( "ImageLoadThread", CORE_ANY );
-	}
-
-	for ( int i = 0; i < imagesToLoad.Num(); ++i ) {
-		if ( image_levelLoadParallel.GetBool() ) {
-			while ( loadThread.imagesLoaded.GetValue() <= i ) {
-				Sys_Yield();
-			}
-			loadThread.imagesProcessed.Increment();
+			if ( image_levelLoadParallel.GetBool() )
+				imagesToLoad.AddGrow( image );
+			else
+				image->ActuallyLoadImage();
 		}
 
-		idImage *image = imagesToLoad[i];
-		image->ActuallyLoadImage();
-
-		if ( i % LOAD_KEY_IMAGE_GRANULARITY == 0 ) {
+		if ( !image_levelLoadParallel.GetBool() && i % LOAD_KEY_IMAGE_GRANULARITY == 0 ) {
 			common->PacifierUpdate( LOAD_KEY_IMAGES_INTERIM, i );
 		}
 	}
 
+	int uploadTime = 0;
+	int diskLoadWaitTime = 0;
 	if ( image_levelLoadParallel.GetBool() ) {
-		loadThread.StopThread( true );
-	}
+		const int BATCH_SIZE = 16;
+		int lastBatch = 0;
+		for ( int curBatch = 0; curBatch < imagesToLoad.Num(); curBatch += BATCH_SIZE ) {
+			for ( int i = curBatch; i < imagesToLoad.Num() && i < curBatch + BATCH_SIZE; ++i ) {
+				idImage *image = imagesToLoad[i];
+				tr.frontEndJobList->AddJob((jobRun_t)R_LoadSingleImage, image);
+			}
+			tr.frontEndJobList->Submit();
 
+			int beforeUpload = Sys_Milliseconds();
+			if ( curBatch != 0 ) {
+				for ( int i = curBatch - BATCH_SIZE; i < curBatch; ++i ) {
+					idImage *image = imagesToLoad[i];
+					R_UploadImageData( *image );
+
+					if ( i % LOAD_KEY_IMAGE_GRANULARITY == 0 ) {
+						common->PacifierUpdate( LOAD_KEY_IMAGES_INTERIM, i );
+					}
+				}
+			}
+
+			lastBatch = curBatch;
+			int beforeDiskWait = Sys_Milliseconds();
+			tr.frontEndJobList->Wait();
+
+			uploadTime += (beforeDiskWait - beforeUpload);
+			diskLoadWaitTime += Sys_Milliseconds() - beforeDiskWait;
+		}
+
+		for ( int i = lastBatch; i < imagesToLoad.Num(); ++i ) {
+			idImage *image = imagesToLoad[i];
+			R_UploadImageData( *image );
+		}
+	}
 	const int end = Sys_Milliseconds();
 	common->Printf( "%5i purged from previous\n", purgeCount );
 	common->Printf( "%5i kept from previous\n", keepCount );
 	common->Printf( "%5i new loaded\n", loadCount );
 	common->Printf( "all images loaded in %5.1f seconds\n", ( end - start ) * 0.001f );
+	common->Printf( "Upload took %5.1f seconds, waiting for background disk load %5.1f\n", uploadTime * 0.001f, diskLoadWaitTime * 0.001f );
 	common->PacifierUpdate( LOAD_KEY_DONE, 0 ); // grayman #3763
 	common->Printf( "----------------------------------------\n" );
 }

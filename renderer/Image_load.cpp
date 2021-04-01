@@ -1378,10 +1378,7 @@ void idImage::ActuallyLoadImage( bool allowBackground ) {
 			R_UploadImageData( *this );
 		}
 	} else {
-		if ( backgroundLoadState != IS_LOADED ) {
-			R_LoadImageData( *this );
-		}
-		backgroundLoadState = IS_NONE;
+		R_LoadImageData( *this );
 		R_UploadImageData( *this );
 	}
 }
