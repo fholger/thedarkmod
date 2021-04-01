@@ -33,6 +33,7 @@ public:
 	virtual void			FreeModel( idRenderModel *model );
 	virtual idRenderModel *	FindModel( const char *modelName );
 	virtual idRenderModel *	CheckModel( const char *modelName );
+	virtual idRenderModel *	InitModel( const char *modelName );
 	virtual idRenderModel *	DefaultModel();
 	virtual void			AddModel( idRenderModel *model );
 	virtual void			RemoveModel( idRenderModel *model );
@@ -53,7 +54,7 @@ private:
 	idRenderModel *			trailModel;
 	bool					insideLevelLoad;		// don't actually load now
 
-	idRenderModel *			GetModel( const char *modelName, bool createIfNotFound );
+	idRenderModel *			GetModel( const char *modelName, bool createIfNotFound, bool loadModel = true );
 
 	static void				PrintModel_f( const idCmdArgs &args );
 	static void				ListModels_f( const idCmdArgs &args );
@@ -239,7 +240,7 @@ void idRenderModelManagerLocal::Shutdown() {
 idRenderModelManagerLocal::GetModel
 =================
 */
-idRenderModel *idRenderModelManagerLocal::GetModel( const char *modelName, bool createIfNotFound ) {
+idRenderModel *idRenderModelManagerLocal::GetModel( const char *modelName, bool createIfNotFound, bool loadModel ) {
 	idStr		canonical;
 	idStr		extension;
 
@@ -257,8 +258,10 @@ idRenderModel *idRenderModelManagerLocal::GetModel( const char *modelName, bool 
 
 		if ( canonical.Icmp( model->Name() ) == 0 ) {
 			if ( !model->IsLoaded() ) {
-				// reload it if it was purged
-				model->LoadModel();
+				if ( loadModel ) {
+					// reload it if it was purged
+					model->LoadModel();
+				}
 			} else if ( insideLevelLoad && !model->IsLevelLoadReferenced() ) {
 				// we are reusing a model already in memory, but
 				// touch all the materials to make sure they stay
@@ -293,11 +296,14 @@ idRenderModel *idRenderModelManagerLocal::GetModel( const char *modelName, bool 
 	}
 
 	if (model) {
-		//do actual load
 		model->InitEmpty(modelName);	//make sure name is set during BeginModelLoad!
-		declManager->BeginModelLoad(model);
-		model->InitFromFile( modelName );
-		declManager->EndModelLoad(model);
+		if ( loadModel ) {
+			//do actual load
+			declManager->BeginModelLoad(model);
+			model->InitFromFile( modelName );
+			declManager->EndModelLoad(model);
+		} else
+			model->PurgeModel();
 	}
 	else {
 		//can't load: make default
@@ -386,6 +392,10 @@ idRenderModelManagerLocal::CheckModel
 */
 idRenderModel *idRenderModelManagerLocal::CheckModel( const char *modelName ) {
 	return GetModel( modelName, false );
+}
+
+idRenderModel *idRenderModelManagerLocal::InitModel( const char *modelName ) {
+	return GetModel( modelName, false, false );	
 }
 
 /*

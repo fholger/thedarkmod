@@ -48,6 +48,8 @@ idRenderModelStatic::idRenderModelStatic() {
 	reloadable = true;
 	levelLoadReferenced = false;
 	timeStamp = 0;
+	preloadData.lwo = nullptr;
+	preloadType = PL_NONE;
 }
 
 /*
@@ -57,6 +59,31 @@ idRenderModelStatic::~idRenderModelStatic
 */
 idRenderModelStatic::~idRenderModelStatic() {
 	PurgeModel();
+}
+
+void idRenderModelStatic::PreloadFromFile( const char *fileName ) {
+	idStr name = fileName;
+	idStr extension;
+	name.ExtractFileExtension( extension );
+
+	preloadType = PL_NONE;
+	if ( extension.Icmp( "ase" ) == 0 ) {
+		bool loaded		= PreloadASE( name );
+		// Tels: #3111 try to load LWO as a fallback
+		if (!loaded) {
+			name.Replace(".ase",".lwo");
+			PreloadLWO( name );
+		}
+	} else if ( extension.Icmp( "lwo" ) == 0 ) {
+		bool loaded		= PreloadLWO( name );
+		// Tels: #3111 try to load ASE as a fallback
+		if (!loaded) {
+			name.Replace(".lwo",".ase");
+			PreloadASE( name );
+		}
+	} else if ( extension.Icmp( "ma" ) == 0 ) {
+		PreloadMA( name );
+	}
 }
 
 /*
@@ -270,7 +297,6 @@ void idRenderModelStatic::InitFromFile( const char *fileName ) {
 
 	// FIXME: load new .proc map format
 	name.ExtractFileExtension( extension );
-
 	if ( extension.Icmp( "ase" ) == 0 ) {
 		loaded		= LoadASE( name );
 		// Tels: #3111 try to load LWO as a fallback
@@ -303,6 +329,7 @@ void idRenderModelStatic::InitFromFile( const char *fileName ) {
 		common->Warning( "idRenderModelStatic::InitFromFile: unknown type for model: \'%s\'", name.c_str() );
 		loaded		= false;
 	}
+	preloadType = PL_NONE;
 
 	if ( !loaded ) {
 		if (fallback.IsEmpty()) {
@@ -1963,19 +1990,35 @@ idRenderModelStatic::LoadASE
 =================
 */
 bool idRenderModelStatic::LoadASE( const char *fileName ) {
+	if ( preloadType == PL_NONE ) {
+		PreloadASE( fileName );
+	}
+	if ( preloadType != PL_ASE ) {
+		return false;
+	}
+
+	ConvertASEToModelSurfaces( preloadData.ase );
+
+	ASE_Free( preloadData.ase );
+	preloadData.ase = nullptr;
+	preloadType = PL_NONE;
+
+	return true;
+}
+
+bool idRenderModelStatic::PreloadASE( const char *fileName ) {
 	aseModel_t *ase;
 
 	ase = ASE_Load( fileName );
 	if ( ase == NULL ) {
 		return false;
 	}
-
-	ConvertASEToModelSurfaces( ase );
-
-	ASE_Free( ase );
-
+	
+	preloadData.ase = ase;
+	preloadType = PL_ASE;
 	return true;
 }
+
 
 /*
 =================
@@ -1983,21 +2026,35 @@ idRenderModelStatic::LoadLWO
 =================
 */
 bool idRenderModelStatic::LoadLWO( const char *fileName ) {
+	if ( preloadType == PL_NONE ) {
+		PreloadLWO( fileName );
+	}
+	if ( preloadType != PL_LWO ) {
+		return false;
+	}
+
+	ConvertLWOToModelSurfaces( preloadData.lwo );
+	lwFreeObject( preloadData.lwo );
+	preloadData.lwo = nullptr;
+	preloadType = PL_NONE;
+
+	return true;
+}
+
+bool idRenderModelStatic::PreloadLWO( const char *fileName ) {
 	unsigned int failID;
 	int failPos;
-	lwObject *lwo;
 
-	lwo = lwGetObject( fileName, &failID, &failPos );
+	lwObject *lwo = lwGetObject( fileName, &failID, &failPos );
 	if ( lwo == NULL ) {
 		return false;
 	}
 
-	ConvertLWOToModelSurfaces( lwo );
-
-	lwFreeObject( lwo );
-
+	preloadType = PL_LWO;
+	preloadData.lwo = lwo;
 	return true;
 }
+
 
 /*
 =================
@@ -2005,6 +2062,23 @@ idRenderModelStatic::LoadMA
 =================
 */
 bool idRenderModelStatic::LoadMA( const char *fileName ) {
+	if ( preloadType == PL_NONE ) {
+		PreloadMA( fileName );
+	}
+	if ( preloadType != PL_MA ) {
+		return false;
+	}
+
+	ConvertMAToModelSurfaces( preloadData.ma );
+
+	MA_Free( preloadData.ma );
+	preloadData.ma = nullptr;
+	preloadType = PL_NONE;
+
+	return true;
+}
+
+bool idRenderModelStatic::PreloadMA( const char *fileName ) {
 	maModel_t *ma;
 
 	ma = MA_Load( fileName );
@@ -2012,10 +2086,8 @@ bool idRenderModelStatic::LoadMA( const char *fileName ) {
 		return false;
 	}
 
-	ConvertMAToModelSurfaces( ma );
-
-	MA_Free( ma );
-
+	preloadData.ma = ma;
+	preloadType = PL_MA;
 	return true;
 }
 

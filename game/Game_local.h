@@ -1063,6 +1063,7 @@ private:
 
 	void					Clear( void );
 
+	void					SpawnModelPreloadJob( idMapEntity *mapEnt );
 							// spawn entities from the map file
 	void					SpawnMapEntities( void );
 							// commons used by init, shutdown, and restart
