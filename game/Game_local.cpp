@@ -49,6 +49,7 @@
 #include "StdString.h"
 #include "Session_local.h"
 #include "../framework/Common.h"
+#include "../renderer/tr_local.h"
 
 #include <chrono>
 #include <iostream>
@@ -409,7 +410,31 @@ void idGameLocal::Clear( void )
 	m_suspiciousEvents.Clear(); // grayman #3424
 
 	m_ambientLights.Clear();	// grayman #3584
+}
 
+void R_LoadModelDataFromDisk( idRenderModel *model ) {
+	model->PreloadFromFile( model->Name() );	
+}
+
+REGISTER_PARALLEL_JOB( R_LoadModelDataFromDisk, "R_LoadModemDataFromDisk" );
+
+void idGameLocal::SpawnModelPreloadJob( idMapEntity *mapEnt ) {
+	const idDict *dict = &mapEnt->epairs;
+	const idKeyValue *kv = dict->MatchPrefix( "model" );
+	while( kv ) {
+		const char *modelName = kv->GetValue();
+		if ( modelName[0] ) {
+			if ( declManager->FindType( DECL_MODELDEF, modelName, false ) == NULL ) {
+				idRenderModel *renderModel = renderModelManager->InitModel( modelName );
+				if ( renderModel ) {
+					tr.frontEndJobList->AddJob( (jobRun_t)R_LoadModelDataFromDisk, renderModel );
+				}
+
+				//renderModelManager->FindModel( modelName );
+			}
+		}
+		kv = dict->MatchPrefix( "model", kv );
+	}
 }
 
 // grayman #3807
@@ -2644,7 +2669,6 @@ avoid the fast pre-cache check associated with each entityDef.
 */
 void idGameLocal::CacheDictionaryMedia( const idDict *dict ) {
 	const idKeyValue *kv;
-	const char *name = dict->GetString("name");
 
 	if ( dict == NULL ) {
 		if ( cvarSystem->GetCVarBool( "com_makingBuild") ) {
@@ -5401,6 +5425,7 @@ idGameLocal::SpawnMapEntities
 Parses textual entity definitions out of an entstring and spawns gentities.
 ==============
 */
+idCVar tdm_modelLoadParallel("tdm_modelLoadParallel", "0", CVAR_ARCHIVE|CVAR_BOOL, "Load models in parallel");
 void idGameLocal::SpawnMapEntities( void )
 {
 	int			i;
@@ -5448,6 +5473,7 @@ void idGameLocal::SpawnMapEntities( void )
 
 	common->PacifierUpdate(LOAD_KEY_SPAWN_ENTITIES_START,numEntities/LOAD_KEY_ENTITY_GRANULARITY); // grayman #3763
 
+	idList<idMapEntity *> entsToLoad;
 	for ( i = 1 ; i < numEntities ; i++ )
 	{
 		mapEnt = mapFile->GetEntity( i );
@@ -5472,7 +5498,28 @@ void idGameLocal::SpawnMapEntities( void )
 
 		if (!InhibitEntitySpawn(args))
 		{
+			entsToLoad.AddGrow( mapEnt );
+			num++;
+		}
+		else
+		{
+			inhibit++;
+		}
+	}
+
+	const int BATCH_SIZE = 16;
+	for ( int curBatch = 0; curBatch < entsToLoad.Num(); curBatch += BATCH_SIZE ) {
+		if ( tdm_modelLoadParallel.GetBool() ) {
+			for ( int i = curBatch + BATCH_SIZE; i < entsToLoad.Num() && i < curBatch + 2*BATCH_SIZE; ++i ) {
+				SpawnModelPreloadJob( entsToLoad[i]	);
+			}
+			tr.frontEndJobList->Submit();
+		}
+
+		for ( int i = curBatch; i < entsToLoad.Num() && i < curBatch + BATCH_SIZE; ++i ) {
+			idMapEntity *mapEnt = entsToLoad[i];
 			declManager->BeginEntityLoad(mapEnt);
+			args = mapEnt->epairs;
 			// precache any media specified in the map entity
 			CacheDictionaryMedia(&args);
 			idEntity *ent;
@@ -5480,18 +5527,16 @@ void idGameLocal::SpawnMapEntities( void )
 			if (ent)
 				ent->fromMapFile = true;
 			declManager->EndEntityLoad(mapEnt);
-			num++;
-		}
-		else
-		{
-			inhibit++;
+
+			// grayman #3763 - update the loading bar every LOAD_KEY_ENTITY_GRANULARITY spawned entities
+			if ( (i % LOAD_KEY_ENTITY_GRANULARITY) == 0)
+			{
+				common->PacifierUpdate(LOAD_KEY_SPAWN_ENTITIES_INTERIM,i);
+			}
 		}
 
-		// grayman #3763 - update the loading bar every LOAD_KEY_ENTITY_GRANULARITY spawned entities
-		if ( (i % LOAD_KEY_ENTITY_GRANULARITY) == 0)
-		{
-			common->PacifierUpdate(LOAD_KEY_SPAWN_ENTITIES_INTERIM,i);
-		}
+		if ( tdm_modelLoadParallel.GetBool() )
+			tr.frontEndJobList->Wait();
 	}
 
 	m_lightGem.InitializeLightGemEntity();

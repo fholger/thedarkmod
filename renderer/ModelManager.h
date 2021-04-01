@@ -55,6 +55,9 @@ public:
 	// returns NULL if not loadable
 	virtual	idRenderModel *	CheckModel( const char *modelName ) = 0;
 
+	// only create the model entry, do not actually load it
+	virtual idRenderModel * InitModel( const char *modelName ) = 0;
+
 	// returns the default cube model
 	virtual	idRenderModel *	DefaultModel() = 0;
 
