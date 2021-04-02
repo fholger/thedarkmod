@@ -2773,7 +2773,9 @@ idFile_InZip * idFileSystemLocal::ReadFileFromZip( pack_t *pak, fileInPack_t *pa
 	unzSetOffset64( pak->handle, pakFile->pos );
 
 	// clone handle and assign a new internal filestream to zip file to it
-	unzFile uf = unzReOpen( pak->pakFilename, pak->handle );
+	unzFile uf = unzOpen( pak->pakFilename );
+	unzSetOffset64( uf, pakFile->pos );
+	unzOpenCurrentFile( uf );
 	if ( uf == NULL ) {
 		common->FatalError( "ReadFileFromZip: Couldn't reopen %s", pak->pakFilename.c_str() );
 	}

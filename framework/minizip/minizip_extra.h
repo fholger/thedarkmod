@@ -1,6 +1,7 @@
 #pragma once
 
 #include "unzip.h"
+#include "zlib.h"
 
 #ifdef __cplusplus
 extern "C" {

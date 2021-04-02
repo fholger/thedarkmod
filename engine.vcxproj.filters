@@ -1252,9 +1252,6 @@
     <ClInclude Include="renderer\glad_wgl.h">
       <Filter>Renderer\glad</Filter>
     </ClInclude>
-    <ClInclude Include="framework\minizip\minizip_private.h">
-      <Filter>Framework\minizip</Filter>
-    </ClInclude>
     <ClInclude Include="tools\compilers\compiler_common.h">
       <Filter>Tools\Compilers</Filter>
     </ClInclude>

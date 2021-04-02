@@ -1,10 +1,10 @@
-/* zconf.h -- configuration of the zlib compression library
+/* zconf-ng.h -- configuration of the zlib-ng compression library
  * Copyright (C) 1995-2016 Jean-loup Gailly, Mark Adler
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
-#ifndef ZCONF_H
-#define ZCONF_H
+#ifndef ZCONFNG_H
+#define ZCONFNG_H
 
 #if !defined(_WIN32) && defined(__WIN32__)
 #  define _WIN32
@@ -25,11 +25,8 @@
 #  define __has_declspec_attribute(x) 0
 #endif
 
-#if defined(ZLIB_CONST) && !defined(z_const)
-#  define z_const const
-#else
-#  define z_const
-#endif
+/* Always define z_const as const */
+#define z_const const
 
 /* Maximum value for memLevel in deflateInit2 */
 #ifndef MAX_MEM_LEVEL
@@ -59,11 +56,6 @@
 */
 
 /* Type declarations */
-
-
-#ifndef OF /* function prototypes */
-#  define OF(args)  args
-#endif
 
 #ifdef ZLIB_INTERNAL
 #  define Z_INTERNAL ZLIB_INTERNAL
@@ -160,7 +152,7 @@ typedef PTRDIFF_TYPE ptrdiff_t;
 #  define Z_WANT64
 #endif
 
-#if !defined(SEEK_SET)
+#if !defined(SEEK_SET) && defined(WITH_GZFILEOP)
 #  define SEEK_SET        0       /* Seek from beginning of file.  */
 #  define SEEK_CUR        1       /* Seek from current position.  */
 #  define SEEK_END        2       /* Set file pointer to EOF plus "offset" */
@@ -182,4 +174,4 @@ typedef PTRDIFF_TYPE ptrdiff_t;
 #  endif
 #endif
 
-#endif /* ZCONF_H */
+#endif /* ZCONFNG_H */
