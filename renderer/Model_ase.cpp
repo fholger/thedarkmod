@@ -51,7 +51,7 @@ typedef struct {
 	int			currentVertex;
 } ase_t;
 
-thread_local ase_t ase;
+static ase_t ase;
 
 
 static aseMesh_t *ASE_GetCurrentMesh( void )

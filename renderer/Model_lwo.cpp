@@ -986,7 +986,7 @@ read requests until flen is reset.
 
 #define FLEN_ERROR -9999
 
-thread_local int flen;
+static int flen;
 
 void set_flen( int i ) { flen = i; }
 

@@ -38,7 +38,7 @@ typedef struct {
 	maObject_t		*currentObject;
 } ma_t;
 
-thread_local ma_t maGlobal;
+static ma_t maGlobal;
 
 
 void MA_ParseNodeHeader(idParser& parser, maNodeHeader_t* header) {

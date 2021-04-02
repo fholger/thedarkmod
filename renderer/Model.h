@@ -177,10 +177,6 @@ class idRenderModel {
 public:
 	virtual						~idRenderModel() {};
 
-	// read model file from disk, but do not actually initialize the model
-	// this is used during level load to decouple I/O from everything else
-	virtual void				PreloadFromFile( const char *fileName ) = 0;
-
 	// Loads static models only, dynamic models must be loaded by the modelManager
 	virtual void				InitFromFile( const char *fileName ) = 0;
 

@@ -24,13 +24,6 @@
 ===============================================================================
 */
 
-enum preloadType_t {
-	PL_NONE,
-	PL_LWO,
-	PL_ASE,
-	PL_MA,
-};
-
 class idRenderModelStatic : public idRenderModel {
 public:
 	// the inherited public interface
@@ -39,7 +32,6 @@ public:
 								idRenderModelStatic();
 	virtual						~idRenderModelStatic();
 
-	virtual void				PreloadFromFile( const char *fileName );
 	virtual void				InitFromFile( const char *fileName );
 	virtual void				PartialInitFromFile( const char *fileName );
 	virtual void				PurgeModel();
@@ -105,10 +97,6 @@ public:
 	int							overlaysAdded;
 
 protected:
-	bool						PreloadLWO( const char *fileName );
-	bool						PreloadASE( const char *fileName );
-	bool						PreloadMA( const char *filename );
-	
 	int							lastModifiedFrame;
 	int							lastArchivedFrame;
 
@@ -122,13 +110,6 @@ protected:
 	bool						levelLoadReferenced;	// for determining if it needs to be freed
 	ID_TIME_T					timeStamp;
 	idStr						proxySourceName;		// stgatilov #4970: name of the source model (only for proxy models)
-
-	union {
-		st_lwObject *lwo;
-		aseModel_s *ase;
-		maModel_s *ma;
-	}							preloadData;			// preloaded data from disk, ready for parsing
-	preloadType_t				preloadType;
 
 	static idCVar				r_mergeModelSurfaces;	// combine model surfaces with the same material
 	static idCVar				r_slopVertex;			// merge xyz coordinates this far apart
@@ -175,7 +156,6 @@ private:
 
 class idRenderModelMD5 : public idRenderModelStatic {
 public:
-	virtual void				PreloadFromFile(const char *fileName) {}
 	virtual void				InitFromFile( const char *fileName );
 	virtual dynamicModel_t		IsDynamicModel() const;
 	virtual idBounds			Bounds( const struct renderEntity_s *ent ) const;
@@ -218,7 +198,6 @@ struct md3Surface_s;
 class idRenderModelMD3 : public idRenderModelStatic {
 public:
 	idRenderModelMD3() : md3( nullptr ) {}
-	virtual void				PreloadFromFile(const char *fileName) {}
 	virtual void				InitFromFile( const char *fileName );
 	virtual dynamicModel_t		IsDynamicModel() const;
 	virtual idRenderModel *		InstantiateDynamicModel( const struct renderEntity_s *ent, const struct viewDef_s *view, idRenderModel *cachedModel );
@@ -245,7 +224,6 @@ class idRenderModelLiquid : public idRenderModelStatic {
 public:
 								idRenderModelLiquid();
 
-	virtual void				PreloadFromFile(const char *fileName) {}
 	virtual void				InitFromFile( const char *fileName );
 	virtual dynamicModel_t		IsDynamicModel() const;
 	virtual idRenderModel *		InstantiateDynamicModel( const struct renderEntity_s *ent, const struct viewDef_s *view, idRenderModel *cachedModel );
@@ -303,7 +281,6 @@ class idRenderModelPrt : public idRenderModelStatic {
 public:
 								idRenderModelPrt();
 
-	virtual void				PreloadFromFile(const char *fileName) {}
 	virtual void				InitFromFile( const char *fileName );
 	virtual void				TouchData();
 	virtual dynamicModel_t		IsDynamicModel() const;
