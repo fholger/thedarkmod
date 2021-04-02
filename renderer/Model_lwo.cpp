@@ -1439,13 +1439,10 @@ lwObject *lwGetObject( const char *filename, unsigned int *failID, int *failpos 
    int id, formsize, type, cksize;
    int i, rlen;
 
-   void *fileContents;
-   int len = 0;
-   if ( (len = fileSystem->ReadFile( filename, &fileContents )) <= 0 ) {
+   fp = fileSystem->OpenFileReadPrefetch( filename );
+   if ( !fp ) {
 	   return NULL;
    }
-   fp = new idFile_Memory( filename, (const char*)fileContents, len );
-   
 
    /* read the first 12 bytes */
 
@@ -1455,7 +1452,6 @@ lwObject *lwGetObject( const char *filename, unsigned int *failID, int *failpos 
    type     = getU4( fp );
    if ( 12 != get_flen() ) {
 	  fileSystem->CloseFile( fp );
-	  fileSystem->FreeFile( fileContents );
 	  return NULL;
    }
 
@@ -1463,14 +1459,12 @@ lwObject *lwGetObject( const char *filename, unsigned int *failID, int *failpos 
 
    if ( id != ID_FORM ) {
 	  fileSystem->CloseFile( fp );
-	  fileSystem->FreeFile( fileContents );
 	  if ( failpos ) *failpos = 12;
 	  return NULL;
    }
 
    if ( type != ID_LWO2 ) {
 	  fileSystem->CloseFile( fp );
-	  fileSystem->FreeFile( fileContents );
 	  if ( type == ID_LWOB )
 		 return lwGetObject5( filename, failID, failpos );
 	  else {
@@ -1611,7 +1605,6 @@ lwObject *lwGetObject( const char *filename, unsigned int *failID, int *failpos 
    }
 
    fileSystem->CloseFile( fp );
-   fileSystem->FreeFile( fileContents );
    fp = NULL;
 
    if ( object->nlayers == 0 )
@@ -1637,7 +1630,6 @@ Fail:
    if ( fp ) {
 	  if ( failpos ) *failpos = fp->Tell();
 	  fileSystem->CloseFile( fp );
-	  fileSystem->FreeFile( fileContents );
    }
    lwFreeObject( object );
    return NULL;
