@@ -542,7 +542,7 @@ Frob shader stub
 ==================
 */
 ID_NOINLINE void RB_STD_T_RenderShaderPasses_Frob( const shaderStage_t *pStage, const drawSurf_t *surf ) {
-	if ( !r_newFrob )
+	//if ( !r_newFrob )
 		return;
 	if ( surf->sort >= SS_DECAL ) // otherwise fills black
 		return;
@@ -718,7 +718,7 @@ int RB_STD_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 		}
 
 		// only dump if in a 3d view
-		if ( backEnd.viewDef->viewEntitys ) {
+		if ( backEnd.viewDef->viewEntitys && !backEnd.currentRenderCopied ) {
 			frameBuffers->UpdateCurrentRenderCopy();
 		}
 		backEnd.currentRenderCopied = true;

@@ -127,10 +127,6 @@ void RenderBackend::DrawView( const viewDef_t *viewDef ) {
 	int RB_STD_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs );
 	processed = RB_STD_DrawShaderPasses( drawSurfs, numDrawSurfs );
 
-	if ( r_frobOutline.GetBool() ) {
-		frobOutlineStage.DrawFrobOutline( drawSurfs, numDrawSurfs );
-	}
-
 	// fog and blend lights
 	extern void RB_STD_FogAllLights( bool translucent );
 	RB_STD_FogAllLights( false );
@@ -141,6 +137,10 @@ void RenderBackend::DrawView( const viewDef_t *viewDef ) {
 	// now draw any post-processing effects using _currentRender
 	if ( processed < numDrawSurfs ) {
 		RB_STD_DrawShaderPasses( drawSurfs + processed, numDrawSurfs - processed );
+	}
+
+	if ( r_frobOutline.GetBool() ) {
+		frobOutlineStage.DrawFrobOutline( drawSurfs, numDrawSurfs );
 	}
 
 	RB_STD_FogAllLights( true ); // 2.08: second fog pass, translucent only

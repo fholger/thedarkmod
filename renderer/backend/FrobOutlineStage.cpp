@@ -39,6 +39,7 @@ namespace {
 		DEFINE_UNIFORM( float, extrusion )
 		DEFINE_UNIFORM( float, depth )
 		DEFINE_UNIFORM( vec4, color )
+		DEFINE_UNIFORM( float, saturation )
 	};
 
 	struct BlurUniforms : GLSLUniformGroup {
@@ -58,6 +59,7 @@ namespace {
 
 void FrobOutlineStage::Init() {
 	silhouetteShader = programManager->LoadFromFiles( "frob_silhouette", "stages/frob/frob.vert.glsl", "stages/frob/frob_silhouette.frag.glsl" );
+	highlightShader = programManager->LoadFromFiles( "frob_highlight", "stages/frob/frob.vert.glsl", "stages/frob/frob_highlight.frag.glsl" );
 	extrudeShader = programManager->LoadFromFiles( "frob_extrude", "stages/frob/frob.vert.glsl", "stages/frob/frob_silhouette.frag.glsl", "stages/frob/frob_extrude.geom.glsl" );
 	applyShader = programManager->LoadFromFiles( "frob_apply", "fullscreen_tri.vert.glsl", "stages/frob/frob_apply.frag.glsl" );
 	colorTex[0] = globalImages->ImageFromFunction( "frob_color_0", FB_RenderTexture );
@@ -117,18 +119,25 @@ void FrobOutlineStage::CreateDrawFbo() {
 }
 
 void FrobOutlineStage::MaskObjects( idList<drawSurf_t *> &surfs ) {
+	if ( !backEnd.currentRenderCopied ) {
+		frameBuffers->UpdateCurrentRenderCopy();
+		backEnd.currentRenderCopied = true;
+	}
 	// mark surfaces in the stencil buffer
 	qglClearStencil( 0 );
 	qglClear( GL_STENCIL_BUFFER_BIT );
 	qglStencilFunc( GL_ALWAYS, 255, 255 );
 	qglStencilOp( GL_KEEP, GL_REPLACE, GL_REPLACE );
-	GL_State( GLS_DEPTHFUNC_ALWAYS | GLS_DEPTHMASK | GLS_COLORMASK );
-	silhouetteShader->Activate();
-	FrobOutlineUniforms *frobUniforms = silhouetteShader->GetUniformGroup<FrobOutlineUniforms>();
+	GL_State( GLS_DEPTHFUNC_LESS | GLS_DEPTHMASK | GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO );
+	highlightShader->Activate();
+	FrobOutlineUniforms *frobUniforms = highlightShader->GetUniformGroup<FrobOutlineUniforms>();
+	GL_SelectTexture( 0 );
+	globalImages->currentRenderImage->Bind();
 	frobUniforms->extrusion.Set( 0.f );
 	frobUniforms->depth.Set( 0.f );
+	frobUniforms->saturation.Set( .5 * sin( gameLocal.time * 2e-3 ) );
 
-	DrawObjects( surfs, silhouetteShader );
+	DrawObjects( surfs, highlightShader );
 }
 
 void FrobOutlineStage::MaskOutlines( idList<drawSurf_t *> &surfs ) {

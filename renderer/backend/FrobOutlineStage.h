@@ -24,6 +24,7 @@ public:
 
 private:
 	GLSLProgram *silhouetteShader = nullptr;
+	GLSLProgram *highlightShader = nullptr;
 	GLSLProgram *extrudeShader = nullptr;
 	GLSLProgram *applyShader = nullptr;
 
