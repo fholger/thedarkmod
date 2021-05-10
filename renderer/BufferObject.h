@@ -51,7 +51,7 @@ public:
 	void				Resize( int allocSize, void* data=NULL );
 
 	// Map / flush / unmap buffer
-	void *				MapBuffer( int mapOffset, int size );
+	void *				MapBuffer( int mapOffset );
 	void				UnmapBuffer( int length );
 
 	bool				IsMapped() const { return mapped; }
@@ -69,7 +69,6 @@ private:
 
 	bool				persistentMap;
 	void *				mapBuff;
-	int					mappedSize;
 	int					lastMapOffset;
 	bool				mapped;
 

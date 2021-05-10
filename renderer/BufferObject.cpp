@@ -153,11 +153,10 @@ void BufferObject::FreeBufferObject() {
 MapBuffer
 ========================
 */
-void * BufferObject::MapBuffer( int mapOffset, int size ) {
+void * BufferObject::MapBuffer( int mapOffset ) {
 	assert( bufferObject != 0 );
 	assert( IsMapped() == false );
 
-	mappedSize = size;
 	void *buffer = NULL;
 
 	lastMapOffset = mapOffset;
@@ -180,8 +179,6 @@ UnmapBuffer
 void BufferObject::UnmapBuffer( int length ) {
 	assert( bufferObject != 0 );
 	assert( IsMapped() );
-	if ( length > mappedSize )
-		length = mappedSize;
 
 	qglBindBuffer( bufferType, bufferObject );
 

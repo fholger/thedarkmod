@@ -48,6 +48,7 @@ struct geoBufferSet_t {
 	int					allocations;	// number of index and vertex allocations combined
 	int					vertexMapOffset;
 	int					indexMapOffset;
+	GLsync				bufferLock;
 
 	geoBufferSet_t();
 };
@@ -87,10 +88,10 @@ public:
 
 	// this data is only valid for one frame of rendering
 	vertCacheHandle_t AllocVertex( const void * data, int bytes ) {
-		return ActuallyAlloc( dynamicData, data, bytes, CACHE_VERTEX );
+		return ActuallyAlloc( frameData[listNum], data, bytes, CACHE_VERTEX );
 	}
 	vertCacheHandle_t AllocIndex( const void * data, int bytes ) {
-		return ActuallyAlloc( dynamicData, data, bytes, CACHE_INDEX );
+		return ActuallyAlloc( frameData[listNum], data, bytes, CACHE_INDEX );
 	}
 
 	// this data is valid until the next map load
@@ -128,7 +129,7 @@ private:
 	int				backendListNum;
 	int				basePointer;
 
-	geoBufferSet_t	dynamicData;
+	geoBufferSet_t	frameData[VERTCACHE_NUM_FRAMES];
 	GLuint			staticVertexBuffer;
 	GLuint			staticIndexBuffer;
 
