@@ -59,12 +59,18 @@ struct GLSLUniform_float : GLSLUniformBase {
 			: GLSLUniformBase(program, uniformName) {}
 
 	void Set(float value) {
-		qglUniform1f(paramLocation, value);
+		if ( value != cache ) {
+			cache = value;
+			qglUniform1f(paramLocation, value);
+		}
 	}
 
 	void SetArray( int count, const float *value ) {
 		qglUniform1fv( paramLocation, count, value );
 	}
+
+private:
+	float cache = 0;
 };
 
 struct GLSLUniform_vec2 : GLSLUniformBase {
@@ -114,7 +120,10 @@ struct GLSLUniform_vec4 : GLSLUniformBase {
 	}
 
 	void Set(const idVec4 &value) {
-		qglUniform4fv(paramLocation, 1, value.ToFloatPtr());
+		if ( cache != value ) {
+			cache = value;
+			qglUniform4fv(paramLocation, 1, value.ToFloatPtr());
+		}
 	}
 
 	void Set(const idPlane &value) {
@@ -128,26 +137,33 @@ struct GLSLUniform_vec4 : GLSLUniformBase {
 	void SetArray(int count, const float *value) {
 		qglUniform4fv( paramLocation, count, value );
 	}
+
+private:
+	idVec4 cache = idVec4( 0, 0, 0, 0 );
 };
 
 struct GLSLUniform_mat4 : GLSLUniformBase {
 	GLSLUniform_mat4(GLSLProgram *program, const char *uniformName)
 			: GLSLUniformBase(program, uniformName) {}
 
-	void Set(const float *value) {
-		if ( IsPresent() )
+	void Set(const float *value ) {
+		if ( IsPresent() && memcmp( value, cache.ToFloatPtr(), sizeof(idMat4) ) != 0 ) {
 			qglUniformMatrix4fv( paramLocation, 1, GL_FALSE, value );
+			memcpy( cache.ToFloatPtr(), value, sizeof(idMat4) );
+		}
 	}
 
 	void Set(const idMat4 &value) {
-		if ( IsPresent() )
-			qglUniformMatrix4fv( paramLocation, 1, false, value.ToFloatPtr() );
+		Set( value.ToFloatPtr() );
 	}
 
 	void SetArray( int count, const float *value ) {
 		if ( IsPresent() )
 			qglUniformMatrix4fv( paramLocation, count, false, value );
 	}
+
+private:
+	idMat4 cache = mat4_zero;
 };
 
 #define DEFINE_UNIFORM(type, name) GLSLUniform_##type name = GLSLUniform_##type(program, "u_" #name);

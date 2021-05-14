@@ -78,5 +78,5 @@ public:
 	}
 };
 
-#define TRACE_GL_SCOPE( section ) GlDebugGroupScope __glDebugGroupCurentScope(section); TracyGpuNamedZone( __tracy_gpu_zone, section, g_tracingEnabled && g_glTraceInitialized );
-#define TRACE_GL_SCOPE_COLOR( section, color ) GlDebugGroupScope __glDebugGroupCurentScope(section); TracyGpuNamedZoneC( __tracy_gpu_zone, section, color, g_tracingEnabled && g_glTraceInitialized );
+#define TRACE_GL_SCOPE( section ) ZoneNamedN( __tracy_scoped_zone, section, g_tracingEnabled ); GlDebugGroupScope __glDebugGroupCurentScope(section); TracyGpuNamedZone( __tracy_gpu_zone, section, g_tracingEnabled && g_glTraceInitialized );
+#define TRACE_GL_SCOPE_COLOR( section, color ) ZoneNamedNC( __tracy_scoped_zone, section, color, g_tracingEnabled ); GlDebugGroupScope __glDebugGroupCurentScope(section); TracyGpuNamedZoneC( __tracy_gpu_zone, section, color, g_tracingEnabled && g_glTraceInitialized );

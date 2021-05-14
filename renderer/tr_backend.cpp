@@ -113,6 +113,11 @@ void GL_SelectTexture( const int unit ) {
 	backEnd.glState.currenttmu = unit;
 }
 
+void GL_BindTexture( int unit, idImage *texture ) {
+	GL_SelectTexture( unit );
+	texture->Bind();
+}
+
 /*
 ====================
 GL_Cull
