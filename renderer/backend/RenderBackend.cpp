@@ -206,6 +206,39 @@ bool RenderBackend::ShouldUseBindlessTextures() const {
 	return GLAD_GL_ARB_bindless_texture && r_useBindlessTextures.GetBool();
 }
 
+void RenderBackend::DrawSurface( const drawSurf_t *surf ) {
+	if ( r_showPrimitives.GetBool() && !backEnd.viewDef->IsLightGem() && backEnd.viewDef->viewEntitys ) {
+		backEnd.pc.c_drawElements++;
+		backEnd.pc.c_drawIndexes += surf->numIndexes;
+		if ( surf->frontendGeo )
+			backEnd.pc.c_drawVertexes += surf->frontendGeo->numVerts;
+	}
+	if ( r_showEntityDraws && surf->space )
+		if ( r_showEntityDraws > 2 ) {
+			((viewEntity_t*)surf->space)->drawCalls += surf->frontendGeo->numIndexes / 3;
+		} else
+			((viewEntity_t *)surf->space)->drawCalls++;
+
+	void* indexPtr;
+	if ( surf->indexCache.IsValid() ) {
+		indexPtr = vertexCache.IndexPosition( surf->indexCache );
+		if ( r_showPrimitives.GetBool() && !backEnd.viewDef->IsLightGem() ) {
+			backEnd.pc.c_vboIndexes += surf->numIndexes;
+		}
+	} else {
+		vertexCache.UnbindIndex();
+		if ( !surf->frontendGeo ) return;
+		indexPtr = surf->frontendGeo->indexes; // FIXME
+	}
+
+	vertexCache.VertexPosition( surf->ambientCache );
+	if ( surf->space->entityParams != boundEntityParams ) {
+		boundEntityParams = surf->space->entityParams;
+		shaderParamsBuffer.BindRangeToIndexTarget( ENTITY_PARAM_INDEX, boundEntityParams, sizeof( EntityParams ) );
+	}
+	qglDrawElementsBaseVertex( GL_TRIANGLES, surf->numIndexes, GL_INDEX_TYPE, indexPtr, surf->ambientCache.offset / sizeof( idDrawVert ) );
+}
+
 void RenderBackend::DrawInteractionsWithShadowMapping(viewLight_t *vLight) {
 	extern void RB_GLSL_DrawInteractions_ShadowMap( const drawSurf_t *surf, bool clear );
 
@@ -377,6 +410,7 @@ void RenderBackend::UploadEntityParams( const viewDef_t *viewDef ) {
 	}
 
 	shaderParamsBuffer.Commit( std::distance( shaderParamsBuffer.CurrentWriteLocation(), buf ) );
+	boundEntityParams = nullptr;
 }
 
 void RenderBackend::UploadShaderParams( const void *data, int size ) {

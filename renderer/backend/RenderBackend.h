@@ -46,7 +46,10 @@ public:
 		UploadShaderParams( &params, sizeof(T) );
 	}
 
+	void DrawSurface( const drawSurf_t *surf );
+
 	const int PARAM_INDEX = 5;
+	const int ENTITY_PARAM_INDEX = 6;
 
 private:
 	GpuBuffer shaderParamsBuffer;
@@ -64,6 +67,7 @@ private:
 	bool initialized = false;
 
 	int uboAlignment = 0;
+	byte *boundEntityParams = nullptr;
 
 	void DrawInteractionsWithShadowMapping( viewLight_t *vLight );
 	void DrawInteractionsWithStencilShadows( const viewDef_t *viewDef, viewLight_t *vLight );
