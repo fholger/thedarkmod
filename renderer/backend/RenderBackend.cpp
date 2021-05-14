@@ -32,6 +32,12 @@ idCVar r_useNewBackend( "r_useNewBackend", "1", CVAR_BOOL|CVAR_RENDERER|CVAR_ARC
 idCVar r_useBindlessTextures("r_useBindlessTextures", "0", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Use experimental bindless texturing to reduce drawcall overhead (if supported by hardware)");
 
 namespace {
+	struct EntityParams {
+		idMat4 modelMatrix;
+		idMat4 modelViewMatrix;
+		idVec4 localViewOrigin;
+	};
+
 	void CreateLightgemFbo( FrameBuffer *fbo ) {
 		fbo->Init( DARKMOD_LG_RENDER_WIDTH, DARKMOD_LG_RENDER_WIDTH );
 		fbo->AddColorRenderBuffer( 0, GL_RGB8 );
@@ -49,6 +55,9 @@ RenderBackend::RenderBackend()
 
 void RenderBackend::Init() {
 	initialized = true;
+
+	qglGetIntegerv( GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uboAlignment );
+	shaderParamsBuffer.Init( GL_UNIFORM_BUFFER, 256 * 8192, uboAlignment );
 
 	drawBatchExecutor.Init();
 	depthStage.Init();
@@ -78,6 +87,7 @@ void RenderBackend::Shutdown() {
 	interactionStage.Shutdown();
 	depthStage.Shutdown();
 	drawBatchExecutor.Destroy();
+	shaderParamsBuffer.Destroy();
 }
 
 void RenderBackend::DrawView( const viewDef_t *viewDef ) {
@@ -102,6 +112,9 @@ void RenderBackend::DrawView( const viewDef_t *viewDef ) {
 	backEnd.pc.c_surfaces += viewDef->numDrawSurfs;
 
 	RB_ShowOverdraw();
+
+	SortDrawSurfs( viewDef );
+	UploadEntityParams( viewDef );
 
 
 	int processed;
@@ -182,6 +195,7 @@ void RenderBackend::DrawLightgem( const viewDef_t *viewDef, byte *lightgemData )
 }
 
 void RenderBackend::EndFrame() {
+	shaderParamsBuffer.SwitchFrame();
 	drawBatchExecutor.EndFrame();
 	if (GLAD_GL_ARB_bindless_texture) {
 		globalImages->MakeUnusedImagesNonResident();
@@ -316,4 +330,62 @@ void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
 	// disable stencil shadow test
 	qglStencilFunc( GL_ALWAYS, 128, 255 );
 	GL_SelectTexture( 0 );
+}
+
+void RenderBackend::SortDrawSurfs( const viewDef_t *viewDef ) {
+	if ( r_ignore.GetBool() )
+		return;
+
+	GL_PROFILE( "SortDrawSurfs" )
+
+	std::sort( viewDef->drawSurfs, viewDef->drawSurfs + viewDef->numDrawSurfs, [](const drawSurf_t *a, const drawSurf_t *b) {
+		if ( a->sort != b->sort )
+			return a->sort < b->sort;
+		if ( a->ambientCache.isStatic != b->ambientCache.isStatic )
+			return a->ambientCache.isStatic;
+		if ( a->indexCache.isStatic != b->indexCache.isStatic )
+			return a->indexCache.isStatic;
+
+		if ( a->material != b->material )
+			return a->material < b->material;
+
+		return a->space < b->space;
+	} );
+}
+
+void RenderBackend::UploadEntityParams( const viewDef_t *viewDef ) {
+	static_assert( sizeof( EntityParams ) % 16 == 0, "EntityParams size must be a multiple of 16 bytes" );
+
+	GL_PROFILE( "UploadEntityParams" )
+
+	byte *buf = shaderParamsBuffer.CurrentWriteLocation();
+	int alignedSize = ALIGN( sizeof( EntityParams ), uboAlignment );
+	for ( viewEntity_t *vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
+		if ( std::distance( shaderParamsBuffer.CurrentWriteLocation(), buf + alignedSize ) > shaderParamsBuffer.BytesRemaining() ) {
+			common->Warning( "UploadEntityParams: out of memory" );
+			break;
+		}
+
+		vEntity->entityParams = buf;
+		EntityParams *params = reinterpret_cast< EntityParams* >( buf );
+		memcpy( params->modelMatrix.ToFloatPtr(), vEntity->modelMatrix, sizeof( idMat4 ) );
+		memcpy( params->modelViewMatrix.ToFloatPtr(), vEntity->modelViewMatrix, sizeof( idMat4 ) );
+		R_GlobalPointToLocal( vEntity->modelMatrix, viewDef->renderView.vieworg, params->localViewOrigin.ToVec3() );
+		params->localViewOrigin[3] = 1;
+
+		buf += alignedSize;
+	}
+
+	shaderParamsBuffer.Commit( std::distance( shaderParamsBuffer.CurrentWriteLocation(), buf ) );
+}
+
+void RenderBackend::UploadShaderParams( const void *data, int size ) {
+	if ( shaderParamsBuffer.BytesRemaining() < size ) {
+		common->Warning( "UploadShaderParams: out of memory" );
+		return;
+	}
+	byte *buf = shaderParamsBuffer.CurrentWriteLocation();
+	memcpy( buf, data, size );
+	shaderParamsBuffer.Commit( size );
+	shaderParamsBuffer.BindRangeToIndexTarget( PARAM_INDEX, buf, size );
 }

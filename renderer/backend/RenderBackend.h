@@ -41,7 +41,15 @@ public:
 
 	bool ShouldUseBindlessTextures() const;
 
+	template <typename T>
+	void SetShaderParams( const T &params ) {
+		UploadShaderParams( &params, sizeof(T) );
+	}
+
+	const int PARAM_INDEX = 5;
+
 private:
+	GpuBuffer shaderParamsBuffer;
 	DrawBatchExecutor drawBatchExecutor;
 	DepthStage depthStage;
 	InteractionStage interactionStage;
@@ -55,9 +63,15 @@ private:
 	int currentLightgemPbo = 0;
 	bool initialized = false;
 
+	int uboAlignment = 0;
+
 	void DrawInteractionsWithShadowMapping( viewLight_t *vLight );
 	void DrawInteractionsWithStencilShadows( const viewDef_t *viewDef, viewLight_t *vLight );
 	void DrawShadowsAndInteractions( const viewDef_t *viewDef );
+
+	void SortDrawSurfs( const viewDef_t *viewDef );
+	void UploadEntityParams( const viewDef_t *viewDef );
+	void UploadShaderParams(const void *data, int size);
 };
 
 extern RenderBackend *renderBackend;

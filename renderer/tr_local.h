@@ -436,6 +436,8 @@ typedef struct viewEntity_s {
 	preparedSurf_t		*preparedSurfs;
 
 	int					drawCalls;				// perf tool
+
+	byte				*entityParams;
 } viewEntity_t;
 
 // viewDefs are allocated on the frame temporary stack memory
