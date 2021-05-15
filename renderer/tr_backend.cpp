@@ -114,6 +114,16 @@ void GL_SelectTexture( const int unit ) {
 	backEnd.glState.currenttmu = unit;
 }
 
+void GL_BindTexture( int unit, idImage *texture, uint64_t *bindlessHandle ) {
+	if ( bindlessHandle != nullptr && renderBackend->ShouldUseBindlessTextures() ) {
+		texture->MakeResident();
+		*bindlessHandle = texture->BindlessHandle();
+	} else {
+		GL_SelectTexture( unit );
+		texture->Bind();
+	}
+}
+
 /*
 ====================
 GL_Cull

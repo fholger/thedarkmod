@@ -19,8 +19,6 @@
 class DepthStage
 {
 public:
-	DepthStage( DrawBatchExecutor *drawBatchExecutor );
-
 	void Init();
 	void Shutdown();
 
@@ -29,18 +27,11 @@ public:
 private:
 	struct ShaderParams;
 
-	DrawBatchExecutor *drawBatchExecutor;
 	GLSLProgram *depthShader = nullptr;
 	GLSLProgram *depthShaderBindless = nullptr;
-
-	uint currentIndex = 0;
-	DrawBatch<ShaderParams> drawBatch;
 
 	bool ShouldDrawSurf( const drawSurf_t *surf ) const;
 	void DrawSurf( const drawSurf_t * drawSurf );
 	void CreateDrawCommands( const drawSurf_t *surf );
 	void IssueDrawCommand( const drawSurf_t *surf, const shaderStage_t *stage );
-
-	void BeginDrawBatch();
-	void ExecuteDrawCalls();
 };

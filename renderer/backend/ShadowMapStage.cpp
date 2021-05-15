@@ -65,7 +65,7 @@ void ShadowMapStage::DrawShadowMap( const viewDef_t *viewDef ) {
 	qglPolygonOffset( 0, 0 );
 	qglEnable( GL_POLYGON_OFFSET_FILL );
 	for ( int i = 0; i < 4; i++ ) {
-		qglEnable( GL_CLIP_PLANE0 + i );
+		qglEnable( GL_CLIP_DISTANCE0 + i );
 	}
 
 	ShadowMapUniforms *shadowMapUniforms = shadowMapShader->GetUniformGroup<ShadowMapUniforms>();
@@ -94,7 +94,7 @@ void ShadowMapStage::DrawShadowMap( const viewDef_t *viewDef ) {
 	}
 
 	for ( int i = 0; i < 4; i++ ) {
-		qglDisable( GL_CLIP_PLANE0 + i );
+		qglDisable( GL_CLIP_DISTANCE0 + i );
 	}
 
 	qglDisable( GL_POLYGON_OFFSET_FILL );

@@ -1101,6 +1101,7 @@ GL wrapper/helper functions
 */
 
 void	GL_SelectTexture( int unit );
+void	GL_BindTexture( int unit, idImage *texture, uint64_t *bindlessHandle = nullptr );
 void	GL_CheckErrors( void );
 void	GL_ClearStateDelta( void );
 void	GL_State( int stateVector );

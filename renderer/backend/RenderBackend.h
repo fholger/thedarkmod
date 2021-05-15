@@ -48,8 +48,8 @@ public:
 
 	void DrawSurface( const drawSurf_t *surf );
 
-	const int PARAM_INDEX = 5;
-	const int ENTITY_PARAM_INDEX = 6;
+	static const int PARAM_INDEX = 5;
+	static const int ENTITY_PARAM_INDEX = 6;
 
 private:
 	GpuBuffer shaderParamsBuffer;

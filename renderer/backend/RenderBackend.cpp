@@ -45,9 +45,11 @@ namespace {
 	}
 }
 
+const int RenderBackend::ENTITY_PARAM_INDEX;
+const int RenderBackend::PARAM_INDEX;
+
 RenderBackend::RenderBackend() 
-	: depthStage( &drawBatchExecutor ),
-	  interactionStage( &drawBatchExecutor ),
+	: interactionStage( &drawBatchExecutor ),
 	  manyLightStage( &drawBatchExecutor ),
 	  stencilShadowStage( &drawBatchExecutor ),
 	  shadowMapStage( &drawBatchExecutor )

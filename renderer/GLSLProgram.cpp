@@ -21,6 +21,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "glsl.h"
 #include "StdString.h"
 #include "Profiling.h"
+#include "backend/RenderBackend.h"
 
 idCVar r_debugGLSL("r_debugGLSL", "0", CVAR_BOOL|CVAR_ARCHIVE, "If enabled, checks and warns about additional potential sources of GLSL shader errors.");
 
@@ -359,6 +360,8 @@ void GLSLProgram::SetDefaultUniformBlockBindings() {
 	BindUniformBlockLocation( 0, "block" );
 	BindUniformBlockLocation( 0, "ViewParamsBlock" );
 	BindUniformBlockLocation( 1, "PerDrawCallParamsBlock" );
+	BindUniformBlockLocation( RenderBackend::ENTITY_PARAM_INDEX, "EntityParamsBlock" );
+	BindUniformBlockLocation( RenderBackend::PARAM_INDEX, "ShaderParamsBlock" );
 }
 
 
