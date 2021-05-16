@@ -238,7 +238,7 @@ void RenderBackend::DrawSurface( const drawSurf_t *surf ) {
 		boundEntityParams = surf->space->entityParams;
 		shaderParamsBuffer.BindRangeToIndexTarget( ENTITY_PARAM_INDEX, boundEntityParams, sizeof( EntityParams ) );
 	}
-	qglDrawElementsBaseVertex( GL_TRIANGLES, surf->numIndexes, GL_INDEX_TYPE, indexPtr, surf->ambientCache.offset / sizeof( idDrawVert ) );
+	qglDrawElementsBaseVertex( GL_TRIANGLES, surf->numIndexes, GL_UNSIGNED_SHORT, indexPtr, surf->ambientCache.offset / sizeof( idDrawVert ) );
 }
 
 void RenderBackend::DrawInteractionsWithShadowMapping(viewLight_t *vLight) {

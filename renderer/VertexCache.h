@@ -86,10 +86,8 @@ public:
 	vertCacheHandle_t AllocVertex( const void * data, int bytes ) {
 		return ActuallyAlloc( dynamicData, data, bytes, CACHE_VERTEX );
 	}
-	vertCacheHandle_t AllocIndex( const void * data, int bytes ) {
-		return ActuallyAlloc( dynamicData, data, bytes, CACHE_INDEX );
-	}
-
+	vertCacheHandle_t AllocIndex( const void * data, int bytes );
+	
 	// this data is valid until the next map load
 	vertCacheHandle_t AllocStaticVertex( const void* data, int bytes );
 	vertCacheHandle_t AllocStaticIndex( const void* data, int bytes );

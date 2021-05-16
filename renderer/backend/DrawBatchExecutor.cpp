@@ -218,7 +218,7 @@ void DrawBatchExecutor::BatchMultiDraw( int numDrawSurfs, int numInstances, Base
 		const drawSurf_t *surf = drawSurfs[i];
 		cmd.count = surf->numIndexes;
 		cmd.instanceCount = numInstances;
-		cmd.firstIndex = surf->indexCache.offset / sizeof(glIndex_t);
+		cmd.firstIndex = surf->indexCache.offset / sizeof(uint16_t);
 		cmd.baseVertex = baseVertexFn( surf );
 		cmd.baseInstance = i;
 	}
@@ -232,7 +232,7 @@ void DrawBatchExecutor::BatchMultiDraw( int numDrawSurfs, int numInstances, Base
 	    drawIdVertexDivisor = numInstances;
         qglVertexBindingDivisor( Attributes::Default::DrawId, drawIdVertexDivisor );
 	}
-	qglMultiDrawElementsIndirect(GL_TRIANGLES, GL_INDEX_TYPE, drawCommandBuffer.BufferOffset(drawCommands), numDrawSurfs, 0);
+	qglMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_SHORT, drawCommandBuffer.BufferOffset(drawCommands), numDrawSurfs, 0);
 }
 
 void DrawBatchExecutor::BatchSingleDraws( int numDrawSurfs, int numInstances, BaseVertexFn baseVertexFn ) {
@@ -246,9 +246,9 @@ void DrawBatchExecutor::BatchSingleDraws( int numDrawSurfs, int numInstances, Ba
 		const void *indexOffset = (void*)(uintptr_t)surf->indexCache.offset;
 		uint baseVertex = baseVertexFn( surf );
 		if ( numInstances == 1 ) {
-			qglDrawElementsBaseVertex(GL_TRIANGLES, surf->numIndexes, GL_INDEX_TYPE, indexOffset, baseVertex);
+			qglDrawElementsBaseVertex(GL_TRIANGLES, surf->numIndexes, GL_UNSIGNED_SHORT, indexOffset, baseVertex);
 		} else {
-			qglDrawElementsInstancedBaseVertex( GL_TRIANGLES, surf->numIndexes, GL_INDEX_TYPE, indexOffset, numInstances, baseVertex );
+			qglDrawElementsInstancedBaseVertex( GL_TRIANGLES, surf->numIndexes, GL_UNSIGNED_SHORT, indexOffset, numInstances, baseVertex );
 		}
 	}
 }

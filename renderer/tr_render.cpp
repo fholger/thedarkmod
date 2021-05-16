@@ -64,7 +64,7 @@ void RB_DrawElementsImmediate( const srfTriangles_t *tri ) {
 	static vertCacheHandle_t nil;
 	vertexCache.VertexPosition( nil );
 	auto ac = tri->verts;
-	qglDrawElements( GL_TRIANGLES, tri->numIndexes, GL_INDEX_TYPE, tri->indexes );
+	qglDrawElements( GL_TRIANGLES, tri->numIndexes, GL_UNSIGNED_INT, tri->indexes );
 }
 
 /*
@@ -86,6 +86,7 @@ void RB_DrawElementsWithCounters( const drawSurf_t *surf ) {
 			((viewEntity_t *)surf->space)->drawCalls++;
 
 	void* indexPtr;
+	GLenum indexType = GL_UNSIGNED_SHORT;
 	if ( surf->indexCache.IsValid() ) {
 		indexPtr = vertexCache.IndexPosition( surf->indexCache );
 		if ( r_showPrimitives.GetBool() && !backEnd.viewDef->IsLightGem() ) {
@@ -95,27 +96,29 @@ void RB_DrawElementsWithCounters( const drawSurf_t *surf ) {
 		vertexCache.UnbindIndex();
 		if ( !surf->frontendGeo ) return;
 		indexPtr = surf->frontendGeo->indexes; // FIXME
+		indexType = GL_UNSIGNED_INT;
 	}
 	int basePointer = vertexCache.GetBaseVertex();
 	if ( basePointer < 0 )
-		qglDrawElements( GL_TRIANGLES, surf->numIndexes, GL_INDEX_TYPE, indexPtr );
+		qglDrawElements( GL_TRIANGLES, surf->numIndexes, indexType, indexPtr );
 	else
-		qglDrawElementsBaseVertex( GL_TRIANGLES, surf->numIndexes, GL_INDEX_TYPE, indexPtr, basePointer );
+		qglDrawElementsBaseVertex( GL_TRIANGLES, surf->numIndexes, indexType, indexPtr, basePointer );
 }
 
 void RB_DrawTriangles( const srfTriangles_t &tri) {
 /*	if ( tri.indexCache.IsValid() ) {
 		qglDrawElements( GL_TRIANGLES,
 			tri.numIndexes,
-			GL_INDEX_TYPE,
+			GL_UNSIGNED_SHORT,
 			vertexCache.IndexPosition( tri.indexCache ) );
 		if ( r_showPrimitives.GetBool() && !backEnd.viewDef->IsLightGem() ) {
 			backEnd.pc.c_vboIndexes += tri.numIndexes;
 		}
 	} else {
 		vertexCache.UnbindIndex();
-		qglDrawElements( GL_TRIANGLES, tri.numIndexes, GL_INDEX_TYPE, tri.indexes ); 
+		qglDrawElements( GL_TRIANGLES, tri.numIndexes, GL_UNSIGNED_SHORT, tri.indexes ); 
 	}*/
+	GLenum indexType = GL_UNSIGNED_SHORT;
 	void* indexPtr;
 	if ( tri.indexCache.IsValid() ) {
 		indexPtr = vertexCache.IndexPosition( tri.indexCache );
@@ -125,12 +128,13 @@ void RB_DrawTriangles( const srfTriangles_t &tri) {
 	} else {
 		vertexCache.UnbindIndex();
 		indexPtr = tri.indexes;
+		indexType = GL_UNSIGNED_INT;
 	}
 	int basePointer = vertexCache.GetBaseVertex();
 	if ( basePointer < 0 )
-		qglDrawElements( GL_TRIANGLES, tri.numIndexes, GL_INDEX_TYPE, tri.indexes );
+		qglDrawElements( GL_TRIANGLES, tri.numIndexes, indexType, tri.indexes );
 	else
-		qglDrawElementsBaseVertex( GL_TRIANGLES, tri.numIndexes, GL_INDEX_TYPE, tri.indexes, basePointer );
+		qglDrawElementsBaseVertex( GL_TRIANGLES, tri.numIndexes, indexType, tri.indexes, basePointer );
 }
 
 /*
@@ -150,6 +154,7 @@ void RB_DrawElementsInstanced( const drawSurf_t *surf, int instances ) {
 		((viewEntity_t*)surf->space)->drawCalls++;
 
 	void* indexPtr;
+	GLenum indexType = GL_UNSIGNED_SHORT;
 	if ( surf->indexCache.IsValid() ) {
 		indexPtr = vertexCache.IndexPosition( surf->indexCache );
 		if ( r_showPrimitives.GetBool() && !backEnd.viewDef->IsLightGem() ) {
@@ -158,12 +163,13 @@ void RB_DrawElementsInstanced( const drawSurf_t *surf, int instances ) {
 	} else {
 		indexPtr = surf->frontendGeo->indexes; // FIXME?
 		vertexCache.UnbindIndex();
+		indexType = GL_UNSIGNED_INT;
 	}
 	int basePointer = vertexCache.GetBaseVertex();
 	if ( basePointer < 0 )
-		qglDrawElementsInstanced( GL_TRIANGLES, surf->numIndexes, GL_INDEX_TYPE, indexPtr, instances );
+		qglDrawElementsInstanced( GL_TRIANGLES, surf->numIndexes, indexType, indexPtr, instances );
 	else
-		qglDrawElementsInstancedBaseVertex( GL_TRIANGLES, surf->numIndexes, GL_INDEX_TYPE, indexPtr, instances, basePointer );
+		qglDrawElementsInstancedBaseVertex( GL_TRIANGLES, surf->numIndexes, indexType, indexPtr, instances, basePointer );
 }
 
 /*
@@ -232,10 +238,10 @@ void RB_Multi_DrawElements( int instances ) {
 		vertexCache.VertexPosition( hBufferStart );
 		auto indices = (const void* const*)multiDrawIndices.Ptr();
 #if 1
-		qglMultiDrawElementsBaseVertex( GL_TRIANGLES, multiDrawCount.Ptr(), GL_INDEX_TYPE, indices, multiDrawCount.Num(), multiDrawBaseVertices.Ptr() );
+		qglMultiDrawElementsBaseVertex( GL_TRIANGLES, multiDrawCount.Ptr(), GL_UNSIGNED_SHORT, indices, multiDrawCount.Num(), multiDrawBaseVertices.Ptr() );
 #else
 		for ( int i = 0; i < multiDrawCount.Num(); i++ ) {
-			qglDrawElementsBaseVertex( GL_TRIANGLES, multiDrawCount[i], GL_INDEX_TYPE, indices[i], multiDrawBaseVertices[i] );
+			qglDrawElementsBaseVertex( GL_TRIANGLES, multiDrawCount[i], GL_UNSIGNED_SHORT, indices[i], multiDrawBaseVertices[i] );
 			GL_CheckErrors();
 		}
 #endif
@@ -272,17 +278,19 @@ void RB_DrawShadowElementsWithCounters( const drawSurf_t *surf ) {
 	}
 
 	void* indexPtr;
+	GLenum indexType = GL_UNSIGNED_SHORT;
 	if ( surf->indexCache.IsValid() ) {
 		indexPtr = vertexCache.IndexPosition( surf->indexCache );
 	} else {
 		vertexCache.UnbindIndex();
 		indexPtr = surf->frontendGeo->indexes; // FIXME
+		indexType = GL_UNSIGNED_INT;
 	}
 	int basePointer = vertexCache.GetBaseVertex();
 	if ( basePointer < 0 )
-		qglDrawElements( GL_TRIANGLES, surf->numIndexes, GL_INDEX_TYPE, indexPtr );
+		qglDrawElements( GL_TRIANGLES, surf->numIndexes, indexType, indexPtr );
 	else
-		qglDrawElementsBaseVertex( GL_TRIANGLES, surf->numIndexes, GL_INDEX_TYPE, indexPtr, basePointer );
+		qglDrawElementsBaseVertex( GL_TRIANGLES, surf->numIndexes, indexType, indexPtr, basePointer );
 }
 
 

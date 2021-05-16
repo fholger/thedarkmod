@@ -347,6 +347,27 @@ void idVertexCache::PrepareStaticCacheForUpload() {
 		Mem_Free16( ptr );
 		staticList.ClearFree();
 	};
+	auto uploadIndex = [](GLuint buffer, GLenum bufferType, int size, StaticList &staticList ) {
+		int offset = 0;
+		byte* ptr = (byte*)Mem_Alloc16( size/2 );
+		for ( auto& pair : staticList ) {
+			glIndex_t *indexes = (glIndex_t*)pair.first;
+			int numIndexes = pair.second / sizeof(glIndex_t);
+			uint16_t *shortIndexes = (uint16_t*) (ptr + offset);
+			for (int i = 0; i < numIndexes; ++i) {
+				shortIndexes[i] = (uint16_t)indexes[i];
+			}
+			offset += pair.second/2;
+		}
+		qglBindBuffer( bufferType, buffer );
+		if ( GLAD_GL_ARB_buffer_storage ) {
+			qglBufferStorage( bufferType, size/2, ptr, 0 );
+		} else {
+			qglBufferData( bufferType, size/2, ptr, GL_STATIC_DRAW );
+		}
+		Mem_Free16( ptr );
+		staticList.ClearFree();
+	};
 
 	if ( staticVertexBuffer != 0 ) {
 		qglDeleteBuffers( 1, &staticVertexBuffer );
@@ -360,13 +381,26 @@ void idVertexCache::PrepareStaticCacheForUpload() {
 	staticVertexSize = ALIGN( staticVertexSize, VERTEX_CACHE_ALIGN );
 	upload( staticVertexBuffer, GL_ARRAY_BUFFER, staticVertexSize, staticVertexList );
 	staticIndexSize = ALIGN( staticIndexSize, INDEX_CACHE_ALIGN );
-	upload( staticIndexBuffer, GL_ELEMENT_ARRAY_BUFFER, staticIndexSize, staticIndexList );
+	uploadIndex( staticIndexBuffer, GL_ELEMENT_ARRAY_BUFFER, staticIndexSize, staticIndexList );
 
 	GL_SetDebugLabel( GL_BUFFER, staticVertexBuffer, "StaticVertexCache" );
 	GL_SetDebugLabel( GL_BUFFER, staticIndexBuffer, "StaticIndexCache" );
 
 	qglBindBuffer( GL_ARRAY_BUFFER, currentVertexBuffer = 0 );
 	qglBindBuffer( GL_ELEMENT_ARRAY_BUFFER, currentIndexBuffer = 0 );
+}
+
+vertCacheHandle_t idVertexCache::AllocIndex( const void *data, int bytes ) {
+	// convert to 16-bit indexes
+	glIndex_t *indexes = (glIndex_t *)data;
+	int numIndexes = bytes / sizeof(glIndex_t);
+	idList<uint16_t> smallIndexes;
+	smallIndexes.SetNum( numIndexes );
+	for (int i = 0; i < numIndexes; ++i) {
+		smallIndexes[i] = static_cast< uint16_t >( indexes[i] );
+	}
+
+	return ActuallyAlloc( dynamicData, smallIndexes.Ptr(), numIndexes * sizeof(uint16_t), CACHE_INDEX );
 }
 
 vertCacheHandle_t idVertexCache::AllocStaticVertex( const void* data, int bytes ) {
@@ -382,5 +416,5 @@ vertCacheHandle_t idVertexCache::AllocStaticIndex( const void* data, int bytes )
 		staticIndexSize = 0;
 	staticIndexList.Append( std::make_pair( data, bytes ) );
 	staticIndexSize += bytes;
-	return vertCacheHandle_t::Create( bytes, staticIndexSize - bytes, 0, true );
+	return vertCacheHandle_t::Create( bytes/2, (staticIndexSize - bytes)/2, 0, true );
 }
