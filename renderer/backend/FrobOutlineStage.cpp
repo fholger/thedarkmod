@@ -40,6 +40,7 @@ namespace {
 		DEFINE_UNIFORM( float, depth )
 		DEFINE_UNIFORM( vec4, color )
 		DEFINE_UNIFORM( float, saturation )
+		DEFINE_UNIFORM( sampler, diffuse )
 	};
 
 	struct BlurUniforms : GLSLUniformGroup {
@@ -131,6 +132,7 @@ void FrobOutlineStage::MaskObjects( idList<drawSurf_t *> &surfs ) {
 	GL_State( GLS_DEPTHFUNC_LESS | GLS_DEPTHMASK | GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO );
 	highlightShader->Activate();
 	FrobOutlineUniforms *frobUniforms = highlightShader->GetUniformGroup<FrobOutlineUniforms>();
+	frobUniforms->diffuse.Set( 1 );
 	GL_SelectTexture( 0 );
 	globalImages->currentRenderImage->Bind();
 	frobUniforms->extrusion.Set( 0.f );
@@ -192,10 +194,21 @@ void FrobOutlineStage::DrawSoftOutline( idList<drawSurf_t *> &surfs ) {
 }
 
 void FrobOutlineStage::DrawObjects( idList<drawSurf_t *> &surfs, GLSLProgram  *shader ) {
+	GL_SelectTexture(1);
 	for ( drawSurf_t *surf : surfs ) {
 		GL_Cull( surf->material->GetCullType() );
 		shader->GetUniformGroup<Uniforms::Global>()->Set( surf->space );
 		vertexCache.VertexPosition( surf->ambientCache );
+		const idMaterial *material = surf->material;
+		idImage *diffuse = globalImages->whiteImage;
+		for ( int i = 0; i < material->GetNumStages(); ++i ) {
+			const shaderStage_t *stage = material->GetStage( i );
+			if ( stage->lighting == SL_DIFFUSE && stage->texture.image ) {
+				diffuse = stage->texture.image;
+				break;
+			}
+		}
+		diffuse->Bind();
 		RB_DrawElementsWithCounters( surf );
 	}
 }
