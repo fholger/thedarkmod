@@ -774,6 +774,7 @@ idParallelJobList::Wait
 ========================
 */
 void idParallelJobList::Wait() {
+	TRACE_CPU_SCOPE_COLOR( "ParallelJobList::Wait", COLOR_IDLE )
 	if ( jobListThreads != NULL ) {
 		jobListThreads->Wait();
 	}
