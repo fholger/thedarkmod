@@ -16,8 +16,6 @@
 #ifndef __PRECOMPILED_H__
 #define __PRECOMPILED_H__
 
-#include "Tracy.hpp"
-
 #include "sys/sys_defines.h"
 #include "sys/sys_includes.h"
 #include "sys/sys_assert.h"

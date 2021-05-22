@@ -251,7 +251,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="idlib\Timer.cpp" />
-    <ClCompile Include="ThirdParty\artefacts\tracy\TracyClient.cpp">
+    <ClCompile Include="ThirdParty\artefacts\microprofile\microprofile.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>

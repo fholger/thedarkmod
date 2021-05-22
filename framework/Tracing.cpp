@@ -31,10 +31,9 @@ void GL_SetDebugLabel(void *ptr, const idStr &label ) {
 }
 
 void InitOpenGLTracing() {
-	TracyGpuContext;
+	MicroProfileGpuInitGL();
 }
 
 void TracingEndFrame() {
-	FrameMark;
-	TracyGpuCollect;
+	MicroProfileFlip( nullptr );
 }

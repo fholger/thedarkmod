@@ -16,8 +16,7 @@
 #pragma once
 
 #include "../renderer/qgl.h"
-#include "TracyOpenGL.hpp"
-#include "common/TracySystem.hpp"
+#include "microprofile.h"
 
 extern idCVar r_useDebugGroups;
 
@@ -27,15 +26,15 @@ void GL_SetDebugLabel(void *ptr, const idStr &label );
 void InitOpenGLTracing();
 void TracingEndFrame();
 
-#define TRACE_THREAD_NAME( name ) tracy::SetThreadName( name );
-#define TRACE_PLOT_NUMBER( name, value ) TracyPlot( name, value ); TracyPlotConfig( name, tracy::PlotFormatType::Number );
-#define TRACE_PLOT_BYTES( name, value ) TracyPlot( name, value ); TracyPlotConfig( name, tracy::PlotFormatType::Memory );
-#define TRACE_PLOT_FRACTION( name, value ) TracyPlot( name, value*100 ); TracyPlotConfig( name, tracy::PlotFormatType::Percentage );
+#define TRACE_THREAD_NAME( name ) MicroProfileOnThreadCreate( name );
+//#define TRACE_PLOT_NUMBER( name, value ) TracyPlot( name, value ); TracyPlotConfig( name, tracy::PlotFormatType::Number );
+//#define TRACE_PLOT_BYTES( name, value ) TracyPlot( name, value ); TracyPlotConfig( name, tracy::PlotFormatType::Memory );
+//#define TRACE_PLOT_FRACTION( name, value ) TracyPlot( name, value*100 ); TracyPlotConfig( name, tracy::PlotFormatType::Percentage );
 
 #define COLOR_IDLE 0x808080
 
-#define TRACE_CPU_SCOPE( section ) ZoneScopedN( section )
-#define TRACE_CPU_SCOPE_COLOR( section, color ) ZoneScopedNC( section, color )
+#define TRACE_CPU_SCOPE( section ) MICROPROFILE_SCOPEI( "TDM", section, MP_GREEN );
+#define TRACE_CPU_SCOPE_COLOR( section, color ) MICROPROFILE_SCOPEI( "TDM", section, color );
 
 class GlDebugGroupScope {
 public:
@@ -50,5 +49,5 @@ public:
 	}
 };
 
-#define TRACE_GL_SCOPE( section ) GlDebugGroupScope __glDebugGroupCurentScope(section); TracyGpuZone( section );
-#define TRACE_GL_SCOPE_COLOR( section, color ) GlDebugGroupScope __glDebugGroupCurentScope(section); TracyGpuZoneC( section, color );
+#define TRACE_GL_SCOPE( section ) GlDebugGroupScope __glDebugGroupCurentScope(section); MICROPROFILE_SCOPEGPUI( section, MP_RED );
+#define TRACE_GL_SCOPE_COLOR( section, color ) GlDebugGroupScope __glDebugGroupCurentScope(section); MICROPROFILE_SCOPEGPUI( section, color );
