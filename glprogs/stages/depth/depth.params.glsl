@@ -12,18 +12,14 @@ or (at your option) any later version. For details, see LICENSE.TXT.
 Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
-#pragma tdm_define "MAX_SHADER_PARAMS"
-
-struct PerDrawCallParams {
-	mat4 modelViewMatrix;
+struct ShaderParams {
 	mat4 textureMatrix;
 	vec4 color;
-	uvec4 scissor;
-	uvec2 texture;
+	uvec2 textureHandle;
 	float alphaTest;
 	float padding;
 };
 
-layout (std140) uniform PerDrawCallParamsBlock {
-	PerDrawCallParams params[MAX_SHADER_PARAMS];
+layout (std140) uniform ShaderParamsBlock {
+	ShaderParams params;
 };

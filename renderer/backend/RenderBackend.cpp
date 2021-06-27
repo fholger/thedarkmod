@@ -31,6 +31,12 @@ idCVar r_useNewBackend( "r_useNewBackend", "1", CVAR_BOOL|CVAR_RENDERER|CVAR_ARC
 idCVar r_useBindlessTextures("r_useBindlessTextures", "0", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Use experimental bindless texturing to reduce drawcall overhead (if supported by hardware)");
 
 namespace {
+	struct EntityParams {
+		idMat4 modelMatrix;
+		idMat4 modelViewMatrix;
+		idVec4 localViewOrigin;
+	};
+
 	void CreateLightgemFbo( FrameBuffer *fbo ) {
 		fbo->Init( DARKMOD_LG_RENDER_WIDTH, DARKMOD_LG_RENDER_WIDTH );
 		fbo->AddColorRenderBuffer( 0, GL_RGB8 );
@@ -38,9 +44,11 @@ namespace {
 	}
 }
 
+const int RenderBackend::ENTITY_PARAM_INDEX;
+const int RenderBackend::PARAM_INDEX;
+
 RenderBackend::RenderBackend() 
-	: depthStage( &drawBatchExecutor ),
-	  interactionStage( &drawBatchExecutor ),
+	: interactionStage( &drawBatchExecutor ),
 	  manyLightStage( &drawBatchExecutor ),
 	  stencilShadowStage( &drawBatchExecutor ),
 	  shadowMapStage( &drawBatchExecutor )
@@ -48,6 +56,9 @@ RenderBackend::RenderBackend()
 
 void RenderBackend::Init() {
 	initialized = true;
+
+	qglGetIntegerv( GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uboAlignment );
+	shaderParamsBuffer.Init( GL_UNIFORM_BUFFER, 256 * 8192, uboAlignment );
 
 	drawBatchExecutor.Init();
 	depthStage.Init();
@@ -77,6 +88,7 @@ void RenderBackend::Shutdown() {
 	interactionStage.Shutdown();
 	depthStage.Shutdown();
 	drawBatchExecutor.Destroy();
+	shaderParamsBuffer.Destroy();
 }
 
 void RenderBackend::DrawView( const viewDef_t *viewDef ) {
@@ -101,6 +113,8 @@ void RenderBackend::DrawView( const viewDef_t *viewDef ) {
 	backEnd.pc.c_surfaces += viewDef->numDrawSurfs;
 
 	RB_ShowOverdraw();
+
+	UploadEntityParams( viewDef );
 
 
 	int processed;
@@ -181,6 +195,7 @@ void RenderBackend::DrawLightgem( const viewDef_t *viewDef, byte *lightgemData )
 }
 
 void RenderBackend::EndFrame() {
+	shaderParamsBuffer.SwitchFrame();
 	drawBatchExecutor.EndFrame();
 	if (GLAD_GL_ARB_bindless_texture) {
 		globalImages->MakeUnusedImagesNonResident();
@@ -189,6 +204,58 @@ void RenderBackend::EndFrame() {
 
 bool RenderBackend::ShouldUseBindlessTextures() const {
 	return GLAD_GL_ARB_bindless_texture && r_useBindlessTextures.GetBool();
+}
+
+void RenderBackend::DrawSurface( const drawSurf_t *surf ) {
+	if ( r_showPrimitives.GetBool() && !backEnd.viewDef->IsLightGem() && backEnd.viewDef->viewEntitys ) {
+		backEnd.pc.c_drawElements++;
+		backEnd.pc.c_drawIndexes += surf->numIndexes;
+		if ( surf->frontendGeo )
+			backEnd.pc.c_drawVertexes += surf->frontendGeo->numVerts;
+	}
+	if ( r_showEntityDraws && surf->space )
+		if ( r_showEntityDraws > 2 ) {
+			((viewEntity_t*)surf->space)->drawCalls += surf->frontendGeo->numIndexes / 3;
+		} else
+			((viewEntity_t *)surf->space)->drawCalls++;
+
+	void* indexPtr;
+	if ( surf->indexCache.IsValid() ) {
+		indexPtr = vertexCache.IndexPosition( surf->indexCache );
+		if ( r_showPrimitives.GetBool() && !backEnd.viewDef->IsLightGem() ) {
+			backEnd.pc.c_vboIndexes += surf->numIndexes;
+		}
+	} else {
+		vertexCache.UnbindIndex();
+		if ( !surf->frontendGeo ) return;
+		indexPtr = surf->frontendGeo->indexes; // FIXME
+	}
+
+	vertexCache.VertexPosition( surf->ambientCache );
+	if ( surf->space && surf->space->entityParams != boundEntityParams ) {
+		boundEntityParams = surf->space->entityParams;
+		shaderParamsBuffer.BindRangeToIndexTarget( ENTITY_PARAM_INDEX, boundEntityParams, sizeof( EntityParams ) );
+	}
+	if ( r_useScissor.GetBool() && !backEnd.currentScissor.Equals( surf->scissorRect ) ) {
+		backEnd.currentScissor = surf->scissorRect;
+		FB_ApplyScissor();
+	}
+	if ( surf->space->weaponDepthHack ) {
+		RB_EnterWeaponDepthHack();
+	}
+	if ( surf->material->TestMaterialFlag( MF_POLYGONOFFSET ) ) {
+		qglEnable( GL_POLYGON_OFFSET_FILL );
+		qglPolygonOffset( r_offsetFactor.GetFloat(), r_offsetUnits.GetFloat() * surf->material->GetPolygonOffset() );
+	}
+
+	qglDrawElementsBaseVertex( GL_TRIANGLES, surf->numIndexes, GL_INDEX_TYPE, indexPtr, surf->ambientCache.offset / sizeof( idDrawVert ) );
+
+	if ( surf->material->TestMaterialFlag( MF_POLYGONOFFSET ) ) {
+		qglDisable( GL_POLYGON_OFFSET_FILL );
+	}
+	if ( surf->space->weaponDepthHack ) {
+		RB_LeaveDepthHack();
+	}
 }
 
 void RenderBackend::DrawInteractionsWithShadowMapping(viewLight_t *vLight) {
@@ -315,4 +382,42 @@ void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
 	// disable stencil shadow test
 	qglStencilFunc( GL_ALWAYS, 128, 255 );
 	GL_SelectTexture( 0 );
+}
+
+void RenderBackend::UploadEntityParams( const viewDef_t *viewDef ) {
+	static_assert( sizeof( EntityParams ) % 16 == 0, "EntityParams size must be a multiple of 16 bytes" );
+
+	TRACE_CPU_SCOPE( "UploadEntityParams" )
+
+	byte *buf = shaderParamsBuffer.CurrentWriteLocation();
+	int alignedSize = ALIGN( sizeof( EntityParams ), uboAlignment );
+	for ( viewEntity_t *vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
+		if ( std::distance( shaderParamsBuffer.CurrentWriteLocation(), buf + alignedSize ) > shaderParamsBuffer.BytesRemaining() ) {
+			common->Warning( "UploadEntityParams: out of memory" );
+			break;
+		}
+
+		vEntity->entityParams = buf;
+		EntityParams *params = reinterpret_cast< EntityParams* >( buf );
+		memcpy( params->modelMatrix.ToFloatPtr(), vEntity->modelMatrix, sizeof( idMat4 ) );
+		memcpy( params->modelViewMatrix.ToFloatPtr(), vEntity->modelViewMatrix, sizeof( idMat4 ) );
+		R_GlobalPointToLocal( vEntity->modelMatrix, viewDef->renderView.vieworg, params->localViewOrigin.ToVec3() );
+		params->localViewOrigin[3] = 1;
+
+		buf += alignedSize;
+	}
+
+	shaderParamsBuffer.Commit( std::distance( shaderParamsBuffer.CurrentWriteLocation(), buf ) );
+	boundEntityParams = nullptr;
+}
+
+void RenderBackend::UploadShaderParams( const void *data, int size ) {
+	if ( shaderParamsBuffer.BytesRemaining() < size ) {
+		common->Warning( "UploadShaderParams: out of memory" );
+		return;
+	}
+	byte *buf = shaderParamsBuffer.CurrentWriteLocation();
+	memcpy( buf, data, size );
+	shaderParamsBuffer.Commit( size );
+	shaderParamsBuffer.BindRangeToIndexTarget( PARAM_INDEX, buf, size );
 }

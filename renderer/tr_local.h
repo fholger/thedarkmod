@@ -436,6 +436,8 @@ typedef struct viewEntity_s {
 	preparedSurf_t		*preparedSurfs;
 
 	int					drawCalls;				// perf tool
+
+	byte				*entityParams;
 } viewEntity_t;
 
 // viewDefs are allocated on the frame temporary stack memory
@@ -1098,6 +1100,7 @@ GL wrapper/helper functions
 */
 
 void	GL_SelectTexture( int unit );
+void	GL_BindTexture( int unit, idImage *texture );
 void	GL_CheckErrors( void );
 void	GL_ClearStateDelta( void );
 void	GL_State( int stateVector );

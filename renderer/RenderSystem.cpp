@@ -120,7 +120,6 @@ Called by R_EndFrame each frame
 ====================
 */
 void R_IssueRenderCommands( frameData_t *frameData ) {
-	TRACE_CPU_SCOPE( "R_IssueRenderCommands" )
 	TRACE_GL_SCOPE( "RenderFrame" )
 
 	emptyCommand_t *cmds = frameData->cmdHead;
