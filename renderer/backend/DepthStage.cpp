@@ -17,7 +17,6 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "../tr_local.h"
 #include "DepthStage.h"
 #include "RenderBackend.h"
-#include "../FrameBuffer.h"
 #include "../glsl.h"
 #include "../FrameBufferManager.h"
 #include "../GLSLProgramManager.h"
@@ -28,58 +27,15 @@ namespace {
 		UNIFORM_GROUP_DEF( DepthUniforms )
 
 		DEFINE_UNIFORM( vec4, clipPlane )
-		DEFINE_UNIFORM( mat4, inverseView )
 		DEFINE_UNIFORM( sampler, texture )
+		DEFINE_UNIFORM( mat4, textureMatrix )
+		DEFINE_UNIFORM( vec4, color )
+		DEFINE_UNIFORM( float, alphaTest )
 	};
-
-	void LoadShader( GLSLProgram *shader, int maxSupportedDrawsPerBatch, bool bindless ) {
-		idHashMapDict defines;
-		defines.Set( "MAX_SHADER_PARAMS", idStr::Fmt( "%d", maxSupportedDrawsPerBatch ) );
-		if (bindless) {
-			defines.Set( "BINDLESS_TEXTURES", "1" );
-		}
-		shader->InitFromFiles( "stages/depth/depth.vert.glsl", "stages/depth/depth.frag.glsl", defines );
-		if (!bindless) {
-			DepthUniforms *uniforms = shader->GetUniformGroup<DepthUniforms>();
-			uniforms->texture.Set( 0 );
-		}
-		shader->BindUniformBlockLocation( 0, "ViewParamsBlock" );
-		shader->BindUniformBlockLocation( 1, "ShaderParamsBlock" );
-	}
-
-	void CalcScissorParam( uint32_t scissor[4], const idScreenRect &screenRect ) {
-		float xScale = static_cast<float>(frameBuffers->activeFbo->Width()) / glConfig.vidWidth;
-		float yScale = static_cast<float>(frameBuffers->activeFbo->Height()) / glConfig.vidHeight;
-
-		scissor[0] = xScale * (backEnd.viewDef->viewport.x1 + screenRect.x1);
-		scissor[1] = yScale * (backEnd.viewDef->viewport.y1 + screenRect.y1);
-		scissor[2] = xScale * (screenRect.x2 + 1 - screenRect.x1);
-		scissor[3] = yScale * (screenRect.y2 + 1 - screenRect.y1);
-	}
-}
-
-struct DepthStage::ShaderParams {
-	idMat4 modelViewMatrix;
-	idMat4 textureMatrix;
-	idVec4 color;
-	uint32_t scissor[4];
-	uint64_t textureHandle;
-	float alphaTest;
-	float padding;
-};
-
-DepthStage::DepthStage( DrawBatchExecutor* drawBatchExecutor )
-	: drawBatchExecutor(drawBatchExecutor)
-{
 }
 
 void DepthStage::Init() {
-	uint maxShaderParamsArraySize = drawBatchExecutor->MaxShaderParamsArraySize<ShaderParams>();
-	depthShader = programManager->LoadFromGenerator( "depth", [=](GLSLProgram *program) { LoadShader(program, maxShaderParamsArraySize, false); } );
-
-	if( GLAD_GL_ARB_bindless_texture ) {
-		depthShaderBindless = programManager->LoadFromGenerator( "depth_bindless", [=](GLSLProgram *program) { LoadShader(program, maxShaderParamsArraySize, true); } );
-	}
+	depthShader = programManager->LoadFromFiles( "depth", "stages/depth/depth.vert.glsl", "stages/depth/depth.frag.glsl" );
 }
 
 void DepthStage::Shutdown() {}
@@ -91,14 +47,44 @@ void DepthStage::DrawDepth( const viewDef_t *viewDef, drawSurf_t **drawSurfs, in
 
 	TRACE_GL_SCOPE( "DepthStage" );
 
-	GLSLProgram *shader = renderBackend->ShouldUseBindlessTextures() ? depthShaderBindless : depthShader;
-	shader->Activate();
-	DepthUniforms *depthUniforms = shader->GetUniformGroup<DepthUniforms>();
+	idList<drawSurf_t*> opaqueSurfs;
+	idList<drawSurf_t*> perforatedSurfs;
 
-	idMat4 inverseView;
-	memcpy( inverseView.ToFloatPtr(), viewDef->worldSpace.modelViewMatrix, sizeof( inverseView ) );
-	inverseView.InverseSelf();
-	depthUniforms->inverseView.Set( inverseView );
+	{
+		TRACE_CPU_SCOPE( "PrepareSurfs" )
+		for ( int i = 0; i < numDrawSurfs; ++i ) {
+			drawSurf_t *surf = drawSurfs[i];
+			if ( !ShouldDrawSurf( surf ) ) {
+				continue;
+			}
+
+			if ( IsOpaqueSurf( surf ) && surf->material->GetSort() != SS_SUBVIEW ) {
+				opaqueSurfs.AddGrow( surf );
+			} else {
+				perforatedSurfs.AddGrow( surf );
+			}
+		}
+
+		std::sort( opaqueSurfs.begin(), opaqueSurfs.end(), []( const drawSurf_t *a, const drawSurf_t *b ) {
+			// sort by cache affiliation
+			if ( a->ambientCache.isStatic != b->ambientCache.isStatic )
+				return a->ambientCache.isStatic;
+			if ( a->indexCache.isStatic != b->indexCache.isStatic )
+				return a->indexCache.isStatic;
+
+			// sort by entity
+			if ( a->space != b->space )
+				return a->space < b->space;
+
+			// sort by surf size
+			return a->numIndexes > b->numIndexes;
+		});
+
+		// perforated surfaces should already be pre-sorted by material and then space, should be enough?
+	}
+
+	depthShader->Activate();
+	DepthUniforms *depthUniforms = depthShader->GetUniformGroup<DepthUniforms>();
 
 	// pass mirror clip plane details to vertex shader if needed
 	if ( viewDef->clipPlane) {
@@ -106,13 +92,6 @@ void DepthStage::DrawDepth( const viewDef_t *viewDef, drawSurf_t **drawSurfs, in
 	} else {
 		depthUniforms->clipPlane.Set( colorBlack );
 	}
-
-	// the first texture will be used for alpha tested surfaces
-	GL_SelectTexture( 0 );
-	depthUniforms->texture.Set( 0 );
-
-	// decal surfaces may enable polygon offset
-	qglPolygonOffset( r_offsetFactor.GetFloat(), r_offsetUnits.GetFloat() );
 
 	GL_State( GLS_DEPTHFUNC_LESS );
 
@@ -122,34 +101,18 @@ void DepthStage::DrawDepth( const viewDef_t *viewDef, drawSurf_t **drawSurfs, in
 	qglEnable( GL_STENCIL_TEST );
 	qglStencilFunc( GL_ALWAYS, 1, 255 );
 
-	BeginDrawBatch();
+	//qglEnable( GL_CLIP_DISTANCE0 );
 
-	bool subViewEnabled = false;
-	const drawSurf_t *curBatchCaches = drawSurfs[0];
-	for ( int i = 0; i < numDrawSurfs; ++i ) {
-		const drawSurf_t *drawSurf = drawSurfs[i];
-		if ( !ShouldDrawSurf( drawSurf ) ) {
-			continue;
-		}
+	depthUniforms->alphaTest.Set( -1 );
+	depthUniforms->color.Set( colorBlack );
 
-		bool isSubView = drawSurf->material->GetSort() == SS_SUBVIEW;
-		if( isSubView != subViewEnabled
-				|| drawSurf->ambientCache.isStatic != curBatchCaches->ambientCache.isStatic
-				|| drawSurf->indexCache.isStatic != curBatchCaches->indexCache.isStatic ) {
-			ExecuteDrawCalls();
-			if( isSubView ) {
-				GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS );
-			} else {
-				GL_State( GLS_DEPTHFUNC_LESS );
-			}
-			subViewEnabled = isSubView;
-		}
-
-		curBatchCaches = drawSurf;
-		DrawSurf( drawSurf );
+	for ( const drawSurf_t *drawSurf : opaqueSurfs ) {
+		renderBackend->DrawSurface( drawSurf );
 	}
 
-	ExecuteDrawCalls();
+	DrawSurfsGeneric( perforatedSurfs );
+
+	//qglDisable( GL_CLIP_DISTANCE0 );
 
 	// Make the early depth pass available to shaders. #3877
 	if ( !viewDef->IsLightGem() && !r_skipDepthCapture.GetBool() ) {
@@ -201,143 +164,125 @@ bool DepthStage::ShouldDrawSurf(const drawSurf_t *surf) const {
     return stage != shader->GetNumStages();
 }
 
-void DepthStage::DrawSurf( const drawSurf_t *surf ) {
-	if ( surf->space->weaponDepthHack ) {
-		// this is a state change, need to finish any previous calls
-		ExecuteDrawCalls();
-		RB_EnterWeaponDepthHack();
-	}
-
-	const idMaterial *shader = surf->material;
-
-	if ( shader->TestMaterialFlag( MF_POLYGONOFFSET ) ) {
-		// this is a state change, need to finish any previous calls
-		ExecuteDrawCalls();
-		qglEnable( GL_POLYGON_OFFSET_FILL );
-		qglPolygonOffset( r_offsetFactor.GetFloat(), r_offsetUnits.GetFloat() * shader->GetPolygonOffset() );
-	}
-
-	CreateDrawCommands( surf );
-
-	// reset polygon offset
-	if ( shader->TestMaterialFlag( MF_POLYGONOFFSET ) ) {
-		ExecuteDrawCalls();
-		qglDisable( GL_POLYGON_OFFSET_FILL );
-	}
-
-	if ( surf->space->weaponDepthHack ) {
-		ExecuteDrawCalls();
-		RB_LeaveDepthHack();
-	}
-}
-
-void DepthStage::CreateDrawCommands( const drawSurf_t *surf ) {
+bool DepthStage::IsOpaqueSurf( const drawSurf_t *surf ) const {
 	const idMaterial		*shader = surf->material;
 	const float				*regs = surf->shaderRegisters;
 
-	bool drawSolid = false;
-
 	if ( shader->Coverage() == MC_OPAQUE ) {
-		drawSolid = true;
+		return true;
 	}
 
-	// we may have multiple alpha tested stages
-	if ( shader->Coverage() == MC_PERFORATED ) {
-		// if the only alpha tested stages are condition register omitted,
-		// draw a normal opaque surface
-		bool	didDraw = false;
+	// perforated surfaces may have multiple alpha tested stages
+	for ( int stage = 0; stage < shader->GetNumStages(); stage++ ) {
+		const shaderStage_t *pStage = shader->GetStage( stage );
 
-		GL_CheckErrors();
-
-		// perforated surfaces may have multiple alpha tested stages
-		for ( int stage = 0; stage < shader->GetNumStages(); stage++ ) {
-			const shaderStage_t *pStage = shader->GetStage( stage );
-
-			if ( !pStage->hasAlphaTest ) {
-				continue;
-			}
-
-			// check the stage enable condition
-			if ( regs[pStage->conditionRegister] == 0 ) {
-				continue;
-			}
-
-			// if we at least tried to draw an alpha tested stage,
-			// we won't draw the opaque surface
-			didDraw = true;
-
-			// skip the entire stage if alpha would be black
-			if ( regs[pStage->color.registers[3]] <= 0 ) {
-				continue;
-			}
-			IssueDrawCommand( surf, pStage );
+		if ( !pStage->hasAlphaTest ) {
+			continue;
 		}
 
-		if ( !didDraw ) {
-			drawSolid = true;
+		// check the stage enable condition
+		if ( regs[pStage->conditionRegister] == 0 ) {
+			continue;
 		}
+
+		return false;
 	}
 
-	if ( drawSolid ) {  // draw the entire surface solid
-		IssueDrawCommand( surf, nullptr );
+	return true;
+}
+
+void DepthStage::DrawSurfsGeneric( const idList<drawSurf_t *> &drawSurfs ) {
+	if ( drawSurfs.Num() == 0 ) {
+		return;
+	}
+
+	idList<int> byMaterial;
+	byMaterial.AddGrow( 0 );
+	for ( int i = 1; i < drawSurfs.Num(); ++i ) {
+		if ( drawSurfs[i]->material != drawSurfs[i-1]->material ) {
+			byMaterial.AddGrow( i );
+		}
+	}
+	byMaterial.AddGrow( drawSurfs.Num() );
+
+	for ( int i = 1; i < byMaterial.Num(); ++i ) {
+		int surfsFrom = byMaterial[i-1];
+		int surfsTo = byMaterial[i];
+		const idMaterial *material = drawSurfs[surfsFrom]->material;
+
+		if( material->GetSort() == SS_SUBVIEW ) {
+			GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS );
+		} else {
+			GL_State( GLS_DEPTHFUNC_LESS );
+		}
+
+		if ( material->Coverage() == MC_PERFORATED ) {
+			// perforated surfaces may have multiple alpha tested stages
+			for ( int stage = 0; stage < material->GetNumStages(); stage++ ) {
+				const shaderStage_t *pStage = material->GetStage( stage );
+
+				if ( !pStage->hasAlphaTest ) {
+					continue;
+				}
+
+				GL_BindTexture( 0, pStage->texture.image );
+				for ( int j = surfsFrom; j < surfsTo; ++j ) {
+					const drawSurf_t *surf = drawSurfs[j];
+					IssueDrawCommand( surf, pStage );
+				}
+			}
+		}
+
+		for ( int j = surfsFrom; j < surfsTo; ++j ) {
+			const drawSurf_t *surf = drawSurfs[j];
+			if ( IsOpaqueSurf( surf ) ) {
+				IssueDrawCommand( surf, nullptr );
+			}
+		}
 	}
 }
 
 void DepthStage::IssueDrawCommand( const drawSurf_t *surf, const shaderStage_t *stage ) {
-	if( stage && !renderBackend->ShouldUseBindlessTextures() && !stage->texture.image->IsBound( 0 ) ) {
-		ExecuteDrawCalls();
-		stage->texture.image->Bind();
+	DepthUniforms *uniforms = depthShader->GetUniformGroup<DepthUniforms>();
+	const idMaterial *material = surf->material;
+	const float *regs = surf->shaderRegisters;
+	
+	if( stage ) {
+		// check the stage enable condition
+		if ( regs[stage->conditionRegister] == 0 ) {
+			return;
+		}
+		// skip the entire stage if alpha would be black
+		if ( regs[stage->color.registers[3]] <= 0 ) {
+			return;
+		}
 	}
 
-	ShaderParams &params = drawBatch.shaderParams[currentIndex];
+	float alphaTest = -1.f;
+	idVec4 color ( 0, 0, 0, 1 );
 
-	memcpy( params.modelViewMatrix.ToFloatPtr(), surf->space->modelViewMatrix, sizeof(idMat4) );
-	CalcScissorParam( params.scissor, surf->scissorRect );
-	params.alphaTest = -1.f;
-
-	if ( surf->material->GetSort() == SS_SUBVIEW ) {
+	if ( material->GetSort() == SS_SUBVIEW ) {
 		// subviews will just down-modulate the color buffer by overbright
-		params.color[0] = params.color[1] = params.color[2] = 1.0f / backEnd.overBright;
-		params.color[3] = 1;
-	} else {
-		// others just draw black
-		params.color = idVec4(0, 0, 0, 1);
+		color[0] = color[1] = color[2] = 1.0f / backEnd.overBright;
+		color[3] = 1;
 	}
 
 	if( stage ) {
 		// set the alpha modulate
-		params.color[3] = surf->shaderRegisters[stage->color.registers[3]];
-		params.alphaTest = surf->shaderRegisters[stage->alphaTestRegister];
+		color[3] = regs[stage->color.registers[3]];
+		alphaTest = regs[stage->alphaTestRegister];
 
-		if( renderBackend->ShouldUseBindlessTextures() ) {
-			stage->texture.image->MakeResident();
-			params.textureHandle = stage->texture.image->BindlessHandle();
-		}
-
-		if( stage->texture.hasMatrix ) {
-			RB_GetShaderTextureMatrix( surf->shaderRegisters, &stage->texture, params.textureMatrix.ToFloatPtr() );
+		idMat4 textureMatrix;
+		if ( stage->texture.hasMatrix ) {
+			RB_GetShaderTextureMatrix( regs, &stage->texture, textureMatrix.ToFloatPtr() );
 		} else {
-			params.textureMatrix.Identity();
+			textureMatrix.Identity();
 		}
+
+		uniforms->textureMatrix.Set( textureMatrix );
 	}
 
-	drawBatch.surfs[currentIndex] = surf;
-	++currentIndex;
-	if ( currentIndex == drawBatch.maxBatchSize ) {
-		ExecuteDrawCalls();
-	}
-}
-
-void DepthStage::BeginDrawBatch() {
-	currentIndex = 0;
-	drawBatch = drawBatchExecutor->BeginBatch<ShaderParams>();
-}
-
-void DepthStage::ExecuteDrawCalls() {
-	if (currentIndex == 0) {
-		return;
-	}
-
-	drawBatchExecutor->ExecuteDrawVertBatch(currentIndex);
-	BeginDrawBatch();
+	uniforms->alphaTest.Set( alphaTest );
+	uniforms->color.Set( color );
+	renderBackend->DrawSurface( surf );
 }
