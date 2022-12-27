@@ -34,6 +34,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "rc/doom_resource.h"
 #include "../../renderer/tr_local.h"
 #include "../../renderer/FrameBuffer.h"
+#include "../../renderer/vulkan/VulkanSystem.h"
 
 
 /*
@@ -731,6 +732,8 @@ bool GLimp_Init( glimpParms_t parms ) {
 		return false;
 	}
 
+	vulkan->Init();
+
 	common->Printf( "...initializing QGL\n" );
 	//load all function pointers available in the final context
 	GLimp_LoadFunctions();
@@ -837,6 +840,8 @@ void GLimp_Shutdown( void ) {
 	int retVal;
 
 	common->Printf( "Shutting down OpenGL subsystem\n" );
+
+	vulkan->Shutdown();
 
 	// set current context to NULL
 	if ( qwglMakeCurrent ) {

@@ -9,6 +9,11 @@
 #include <volk.h>
 
 idCVar vulkan_enable_validation_layers("vulkan_enable_validation_layers", "0", CVAR_BOOL, "Enable Vulkan validation layers for debugging. Must be set on start.");
+idCVar vulkan_physical_device_name_filter("vulkan_physical_device_name_filter", "", 0, "If set, only consider GPUs whose device name (partially) matches the filter. Must be set on start.");
+
+
+static VulkanSystem vulkanImpl;
+VulkanSystem* vulkan = &vulkanImpl;
 
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type,
@@ -25,9 +30,11 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSev
 
 void VulkanSystem::Init()
 {
+	common->Printf("Initializing Vulkan system...\n");
 	EnsureSuccess("initializing Vulkan loader", volkInitialize());
 	CreateInstance();
 	CreateDebugMessenger();
+	PickPhysicalDevice();
 }
 
 void VulkanSystem::Shutdown()
@@ -111,4 +118,70 @@ void VulkanSystem::PopulateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateI
 	createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
 	createInfo.pfnUserCallback = VulkanDebugCallback;
 	createInfo.pUserData = nullptr;
+}
+
+void VulkanSystem::PickPhysicalDevice()
+{
+	uint32_t deviceCount = 0;
+	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+	if (deviceCount == 0)
+	{
+		common->FatalError("Could not find any graphics cards with Vulkan support");
+	}
+
+	idList<VkPhysicalDevice> devices;
+	devices.SetNum(deviceCount);
+	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.Ptr());
+
+	int bestScore = -1;
+	for (const auto &device : devices)
+	{
+		int score = ScorePhysicalDevice( device );
+		if (score > bestScore)
+		{
+			bestScore = score;
+			physicalDevice = device;
+		}
+	}
+
+	if (bestScore < 0 || physicalDevice == VK_NULL_HANDLE)
+	{
+		common->FatalError( "Could not find a suitable graphics card for rendering" );
+	}
+
+	VkPhysicalDeviceProperties properties;
+	vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+	common->Printf("(Vulkan) GPU picked for rendering: %s\n", properties.deviceName);
+}
+
+int VulkanSystem::ScorePhysicalDevice( VkPhysicalDevice device )
+{
+	VkPhysicalDeviceProperties properties;
+	VkPhysicalDeviceFeatures features;
+	vkGetPhysicalDeviceProperties(device, &properties);
+	vkGetPhysicalDeviceFeatures(device, &features);
+	common->Printf("(Vulkan) Found GPU: %s\n", properties.deviceName);
+
+	if (properties.apiVersion < VK_VERSION_1_3)
+	{
+		common->Printf("  X does not support Vulkan 1.3\n");
+		return -1;
+	}
+
+	int score = 0;
+	if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+	{
+		common->Printf("  is a discrete GPU\n");
+		score += 1000;
+	}
+	if (strcmp(vulkan_physical_device_name_filter.GetString(), "") != 0)
+	{
+		if (strstr(properties.deviceName, vulkan_physical_device_name_filter.GetString()))
+		{
+			common->Printf("  matches provided device name filter\n");
+			score += 1000000;
+		}
+	}
+
+	return score;
 }
