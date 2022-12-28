@@ -35,10 +35,13 @@ void VulkanSystem::Init()
 	CreateInstance();
 	CreateDebugMessenger();
 	PickPhysicalDevice();
+	CreateDevice();
 }
 
 void VulkanSystem::Shutdown()
 {
+	vkDestroyDevice(device, nullptr);
+	device = nullptr;
 	if (debugMessenger != nullptr)
 	{
 		vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
@@ -167,6 +170,11 @@ int VulkanSystem::ScorePhysicalDevice( VkPhysicalDevice device )
 		common->Printf("  X does not support Vulkan 1.3\n");
 		return -1;
 	}
+	if (!FindQueueFamily(device, VK_QUEUE_GRAPHICS_BIT))
+	{
+		common->Printf("  X no suitable graphics queue family found\n");
+		return -1;
+	}
 
 	int score = 0;
 	if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
@@ -184,4 +192,50 @@ int VulkanSystem::ScorePhysicalDevice( VkPhysicalDevice device )
 	}
 
 	return score;
+}
+
+bool VulkanSystem::FindQueueFamily(VkPhysicalDevice device, VkQueueFlags requiredFlags, uint32_t *indexOut)
+{
+	uint32_t queueFamilyCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+	idList<VkQueueFamilyProperties> queueFamilies;
+	queueFamilies.SetNum(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.Ptr());
+
+	for (uint32_t i = 0; i < queueFamilies.Num(); ++i)
+	{
+		if (queueFamilies[i].queueFlags & requiredFlags)
+		{
+			if (indexOut != nullptr)
+			{
+				*indexOut = i;
+			}
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void VulkanSystem::CreateDevice()
+{
+	VkPhysicalDeviceFeatures features {};
+
+	VkDeviceQueueCreateInfo queueCreateInfo {};
+	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	FindQueueFamily(physicalDevice, VK_QUEUE_GRAPHICS_BIT, &queueCreateInfo.queueFamilyIndex);
+	queueCreateInfo.queueCount = 1;
+
+	VkDeviceCreateInfo createInfo {};
+	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	createInfo.pEnabledFeatures = &features;
+	createInfo.queueCreateInfoCount = 1;
+	createInfo.pQueueCreateInfos = &queueCreateInfo;
+
+	EnsureSuccess("creating device", vkCreateDevice(physicalDevice, &createInfo, nullptr, &device));
+	volkLoadDevice(device);
+
+	uint32_t graphicsQueueIndex;
+	FindQueueFamily(physicalDevice, VK_QUEUE_GRAPHICS_BIT, &graphicsQueueIndex);
+	vkGetDeviceQueue(device, graphicsQueueIndex, 0, &graphicsQueue);
 }
