@@ -244,6 +244,7 @@ include_directories(
 		"${PROJECT_SOURCE_DIR}/ThirdParty/artefacts/tracy/include/libbacktrace"
 		"${PROJECT_SOURCE_DIR}/ThirdParty/artefacts/volk"
 		"${PROJECT_SOURCE_DIR}/ThirdParty/artefacts/vulkan/include"
+		"${PROJECT_SOURCE_DIR}/ThirdParty/artefacts/vma/include"
 		${zlib_INCLUDE_DIRS}
 		${minizip_INCLUDE_DIRS}
 		${CURL_INCLUDE_DIRS}

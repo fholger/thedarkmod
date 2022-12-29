@@ -2,11 +2,10 @@
 #include "VulkanSystem.h"
 #include <vulkan/vk_enum_string_helper.h>
 
-#ifdef WIN32
-#define VK_USE_PLATFORM_WIN32_KHR
-#endif
 #define VOLK_IMPLEMENTATION
 #include <volk.h>
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
 
 idCVar vulkan_enable_validation_layers("vulkan_enable_validation_layers", "0", CVAR_BOOL, "Enable Vulkan validation layers for debugging. Must be set on start.");
 idCVar vulkan_physical_device_name_filter("vulkan_physical_device_name_filter", "", 0, "If set, only consider GPUs whose device name (partially) matches the filter. Must be set on start.");
@@ -36,10 +35,16 @@ void VulkanSystem::Init()
 	CreateDebugMessenger();
 	PickPhysicalDevice();
 	CreateDevice();
+	CreateMemoryAllocator();
 }
 
 void VulkanSystem::Shutdown()
 {
+	if (allocator != nullptr)
+	{
+		vmaDestroyAllocator(allocator);
+		allocator = nullptr;
+	}
 	if (device != nullptr)
 	{
 		vkDestroyDevice(device, nullptr);
@@ -257,4 +262,54 @@ void VulkanSystem::CreateDevice()
 	uint32_t graphicsQueueIndex;
 	FindQueueFamily(physicalDevice, VK_QUEUE_GRAPHICS_BIT, &graphicsQueueIndex);
 	vkGetDeviceQueue(device, graphicsQueueIndex, 0, &graphicsQueue);
+}
+
+void VulkanSystem::CreateMemoryAllocator()
+{
+	// add external memory support to all allocations for OpenGL interop
+	VkPhysicalDeviceMemoryProperties memoryProperties;
+	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+	idList<VkExternalMemoryHandleTypeFlagsKHR> externalMemoryTypes;
+	for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i)
+	{
+		externalMemoryTypes.AddGrow(VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR);
+	}
+
+	// forward our volk-loaded function pointers to the VMA library
+	VmaVulkanFunctions functions {};
+	functions.vkAllocateMemory = vkAllocateMemory;
+	functions.vkBindBufferMemory = vkBindBufferMemory;
+	functions.vkBindBufferMemory2KHR = vkBindBufferMemory2KHR;
+	functions.vkBindImageMemory = vkBindImageMemory;
+	functions.vkBindImageMemory2KHR = vkBindImageMemory2KHR;
+	functions.vkCmdCopyBuffer = vkCmdCopyBuffer;
+	functions.vkCreateBuffer = vkCreateBuffer;
+	functions.vkCreateImage = vkCreateImage;
+	functions.vkDestroyBuffer = vkDestroyBuffer;
+	functions.vkDestroyImage = vkDestroyImage;
+	functions.vkFlushMappedMemoryRanges = vkFlushMappedMemoryRanges;
+	functions.vkFreeMemory = vkFreeMemory;
+	functions.vkGetBufferMemoryRequirements = vkGetBufferMemoryRequirements;
+	functions.vkGetBufferMemoryRequirements2KHR = vkGetBufferMemoryRequirements2KHR;
+	functions.vkGetDeviceBufferMemoryRequirements = vkGetDeviceBufferMemoryRequirements;
+	functions.vkGetDeviceImageMemoryRequirements = vkGetDeviceImageMemoryRequirements;
+	functions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+	functions.vkGetImageMemoryRequirements = vkGetImageMemoryRequirements;
+	functions.vkGetImageMemoryRequirements2KHR = vkGetImageMemoryRequirements2KHR;
+	functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+	functions.vkGetPhysicalDeviceMemoryProperties = vkGetPhysicalDeviceMemoryProperties;
+	functions.vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2KHR;
+	functions.vkGetPhysicalDeviceProperties = vkGetPhysicalDeviceProperties;
+	functions.vkInvalidateMappedMemoryRanges = vkInvalidateMappedMemoryRanges;
+	functions.vkMapMemory = vkMapMemory;
+	functions.vkUnmapMemory = vkUnmapMemory;
+
+	VmaAllocatorCreateInfo createInfo {};
+	createInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+	createInfo.instance = instance;
+	createInfo.physicalDevice = physicalDevice;
+	createInfo.device = device;
+	createInfo.pVulkanFunctions = &functions;
+	createInfo.pTypeExternalMemoryHandleTypes = externalMemoryTypes.Ptr();
+	EnsureSuccess("creating memory allocator", vmaCreateAllocator(&createInfo, &allocator));
 }

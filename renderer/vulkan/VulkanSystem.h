@@ -15,6 +15,7 @@ private:
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VkDevice device = VK_NULL_HANDLE;
 	VkQueue graphicsQueue = VK_NULL_HANDLE;
+	VmaAllocator allocator = VK_NULL_HANDLE;
 
 	void CreateInstance();
 	void CreateDebugMessenger();
@@ -23,6 +24,7 @@ private:
 	int ScorePhysicalDevice(VkPhysicalDevice device);
 	bool FindQueueFamily(VkPhysicalDevice device, VkQueueFlags requiredFlags, uint32_t *indexOut = nullptr);
 	void CreateDevice();
+	void CreateMemoryAllocator();
 };
 
 extern VulkanSystem* vulkan;
