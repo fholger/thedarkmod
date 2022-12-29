@@ -77,7 +77,12 @@ void VulkanSystem::CreateInstance()
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	createInfo.pApplicationInfo = &appInfo;
 
-	idList<const char*> instanceExtensions;
+	idList<const char*> instanceExtensions
+	{
+		// needed for OpenGL interop
+		VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
+		VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME,
+	};
 	if (vulkan_enable_validation_layers.GetBool())
 	{
 		instanceExtensions.AddGrow(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -234,6 +239,17 @@ void VulkanSystem::CreateDevice()
 	createInfo.pEnabledFeatures = &features;
 	createInfo.queueCreateInfoCount = 1;
 	createInfo.pQueueCreateInfos = &queueCreateInfo;
+
+	idList<const char*> extensions
+	{
+		// required for OpenGL interop
+		VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,
+		VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
+		VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
+		VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,
+	};
+	createInfo.enabledExtensionCount = extensions.Num();
+	createInfo.ppEnabledExtensionNames = extensions.Ptr();
 
 	EnsureSuccess("creating device", vkCreateDevice(physicalDevice, &createInfo, nullptr, &device));
 	volkLoadDevice(device);

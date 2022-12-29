@@ -73,11 +73,15 @@ void GLimp_CheckRequiredFeatures( void ) {
 	bool reqs = true;
 	reqs = reqs && CHECK_FEATURE(GL_VERSION_3_3);
 	reqs = reqs && CHECK_FEATURE(GL_EXT_texture_compression_s3tc);
+	reqs = reqs && CHECK_FEATURE(GL_EXT_memory_object);
+	reqs = reqs && CHECK_FEATURE(GL_EXT_semaphore);
 #if defined(_WIN32)
 	reqs = reqs && CHECK_FEATURE(WGL_VERSION_1_0);
 	//reqs = reqs && CHECK_FEATURE(WGL_ARB_create_context);
 	//reqs = reqs && CHECK_FEATURE(WGL_ARB_create_context_profile);
 	reqs = reqs && CHECK_FEATURE(WGL_ARB_pixel_format);
+	reqs = reqs && CHECK_FEATURE(GL_EXT_memory_object_win32);
+	reqs = reqs && CHECK_FEATURE(GL_EXT_semaphore_win32);
 #elif defined(__linux__)
 	//reqs = reqs && CHECK_FEATURE(GLX_VERSION_1_4);
 	//reqs = reqs && CHECK_FEATURE(GLX_ARB_create_context);
