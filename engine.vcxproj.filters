@@ -1633,6 +1633,9 @@
     <ClInclude Include="renderer\vulkan\VulkanSystem.h">
       <Filter>Renderer\Vulkan</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\vulkan\qvulkan.h">
+      <Filter>Renderer\Vulkan</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">

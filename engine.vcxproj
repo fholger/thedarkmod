@@ -650,6 +650,7 @@
     <ClInclude Include="renderer\tr_local.h" />
     <ClInclude Include="renderer\VertexCache.h" />
     <ClInclude Include="renderer\VolumetricStage.h" />
+    <ClInclude Include="renderer\vulkan\qvulkan.h" />
     <ClInclude Include="renderer\vulkan\VulkanSystem.h" />
     <ClInclude Include="sound\efxlib.h" />
     <ClInclude Include="sound\snd_efxpresets.h" />

@@ -40,8 +40,11 @@ void VulkanSystem::Init()
 
 void VulkanSystem::Shutdown()
 {
-	vkDestroyDevice(device, nullptr);
-	device = nullptr;
+	if (device != nullptr)
+	{
+		vkDestroyDevice(device, nullptr);
+		device = nullptr;
+	}
 	if (debugMessenger != nullptr)
 	{
 		vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
