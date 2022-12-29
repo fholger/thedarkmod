@@ -169,6 +169,9 @@
     <Filter Include="Idlib\Text">
       <UniqueIdentifier>{540fcf5a-6234-44ad-92a0-eacd08571bc1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Renderer\Vulkan">
+      <UniqueIdentifier>{1547ade8-c6dc-4b29-b00b-713de6de6efc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h">
@@ -1626,6 +1629,9 @@
     </ClInclude>
     <ClInclude Include="idlib\containers\BitArray.h">
       <Filter>Idlib\Containers</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\vulkan\VulkanSystem.h">
+      <Filter>Renderer\Vulkan</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -3597,6 +3603,9 @@
     </ClCompile>
     <ClCompile Include="idlib\containers\BitArray.cpp">
       <Filter>Idlib\Containers</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\vulkan\VulkanSystem.cpp">
+      <Filter>Renderer\Vulkan</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
