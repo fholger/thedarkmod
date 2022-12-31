@@ -44,6 +44,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 // interop with Vulkan
 #define GL_EXT_memory_object					1
 #define GL_EXT_semaphore						1
+#define GL_ARB_direct_state_access				1
 #ifdef _WIN32
 #define GL_EXT_memory_object_win32				1
 #define GL_EXT_semaphore_win32					1

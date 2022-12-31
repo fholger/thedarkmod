@@ -62,12 +62,16 @@ static void AllocGeoBufferSet( geoBufferSet_t &gbs, const int vertexBytes, const
 	gbs.indexBuffer.InitWriteFrameAhead( GL_ELEMENT_ARRAY_BUFFER, indexBytes, INDEX_CACHE_ALIGN );
 	GL_SetDebugLabel( GL_BUFFER, gbs.vertexBuffer.GetAPIObject(), "DynamicVertexCache" );
 	GL_SetDebugLabel( GL_BUFFER, gbs.indexBuffer.GetAPIObject(), "DynamicIndexCache" );
+	gbs.newVertexBuffer.Init(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertexBytes, VERTEX_CACHE_ALIGN);
+	gbs.newIndexBuffer.Init(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indexBytes, INDEX_CACHE_ALIGN);
 	ClearGeoBufferSet( gbs );
 }
 
 static void FreeGeoBufferSet( geoBufferSet_t &gbs ) {
 	gbs.vertexBuffer.Destroy();
 	gbs.indexBuffer.Destroy();
+	gbs.newVertexBuffer.Destroy();
+	gbs.newIndexBuffer.Destroy();
 }
 
 /* duzenko 2.08

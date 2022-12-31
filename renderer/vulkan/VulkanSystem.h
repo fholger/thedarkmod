@@ -9,7 +9,6 @@ public:
 
 	static void EnsureSuccess(const char* description, VkResult result);
 
-private:
 	VkInstance instance = VK_NULL_HANDLE;
 	VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -17,6 +16,7 @@ private:
 	VkQueue graphicsQueue = VK_NULL_HANDLE;
 	VmaAllocator allocator = VK_NULL_HANDLE;
 
+private:
 	void CreateInstance();
 	void CreateDebugMessenger();
 	void PopulateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);

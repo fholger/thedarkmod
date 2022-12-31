@@ -1636,6 +1636,9 @@
     <ClInclude Include="renderer\vulkan\qvulkan.h">
       <Filter>Renderer\Vulkan</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\vulkan\FrameAheadGpuBuffer.h">
+      <Filter>Renderer\Vulkan</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -3608,6 +3611,9 @@
       <Filter>Idlib\Containers</Filter>
     </ClCompile>
     <ClCompile Include="renderer\vulkan\VulkanSystem.cpp">
+      <Filter>Renderer\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\vulkan\FrameAheadGpuBuffer.cpp">
       <Filter>Renderer\Vulkan</Filter>
     </ClCompile>
   </ItemGroup>

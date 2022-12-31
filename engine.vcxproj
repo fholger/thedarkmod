@@ -650,6 +650,7 @@
     <ClInclude Include="renderer\tr_local.h" />
     <ClInclude Include="renderer\VertexCache.h" />
     <ClInclude Include="renderer\VolumetricStage.h" />
+    <ClInclude Include="renderer\vulkan\FrameAheadGpuBuffer.h" />
     <ClInclude Include="renderer\vulkan\qvulkan.h" />
     <ClInclude Include="renderer\vulkan\VulkanSystem.h" />
     <ClInclude Include="sound\efxlib.h" />
@@ -1334,6 +1335,7 @@
     <ClCompile Include="renderer\tr_turboshadow.cpp" />
     <ClCompile Include="renderer\VertexCache.cpp" />
     <ClCompile Include="renderer\VolumetricStage.cpp" />
+    <ClCompile Include="renderer\vulkan\FrameAheadGpuBuffer.cpp" />
     <ClCompile Include="renderer\vulkan\VulkanSystem.cpp" />
     <ClCompile Include="sound\snd_cache.cpp" />
     <ClCompile Include="sound\snd_decoder.cpp" />

@@ -17,6 +17,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #define __VERTEXCACHE_H__
 
 #include "backend/GpuBuffer.h"
+#include "vulkan/FrameAheadGpuBuffer.h"
 
 // vertex cache calls should only be made by the front end
 
@@ -43,6 +44,8 @@ enum cacheType_t {
 struct geoBufferSet_t {
 	GpuBuffer			indexBuffer;
 	GpuBuffer			vertexBuffer;
+	FrameAheadGpuBuffer	newIndexBuffer;
+	FrameAheadGpuBuffer	newVertexBuffer;
 	byte *				mappedVertexBase;
 	byte *				mappedIndexBase;
 	idSysInterlockedInteger	indexMemUsed;
