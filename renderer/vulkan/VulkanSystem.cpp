@@ -77,7 +77,7 @@ void VulkanSystem::CreateInstance()
 	appInfo.applicationVersion = VK_MAKE_VERSION(2, 11, 0);
 	appInfo.pEngineName = "The Dark Mod";
 	appInfo.engineVersion = VK_MAKE_VERSION(2, 11, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_3;
+	appInfo.apiVersion = VK_API_VERSION_1_2;
 
 	VkInstanceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -233,12 +233,16 @@ bool VulkanSystem::FindQueueFamily(VkPhysicalDevice device, VkQueueFlags require
 
 void VulkanSystem::CreateDevice()
 {
+	FindQueueFamily(physicalDevice, VK_QUEUE_GRAPHICS_BIT, &graphicsQueueFamily);
+
 	VkPhysicalDeviceFeatures features {};
 
+	float priority = 1.f;
 	VkDeviceQueueCreateInfo queueCreateInfo {};
 	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	FindQueueFamily(physicalDevice, VK_QUEUE_GRAPHICS_BIT, &queueCreateInfo.queueFamilyIndex);
+	queueCreateInfo.queueFamilyIndex = graphicsQueueFamily;
 	queueCreateInfo.queueCount = 1;
+	queueCreateInfo.pQueuePriorities = &priority;
 
 	VkDeviceCreateInfo createInfo {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -260,7 +264,6 @@ void VulkanSystem::CreateDevice()
 	EnsureSuccess("creating device", vkCreateDevice(physicalDevice, &createInfo, nullptr, &device));
 	volkLoadDevice(device);
 
-	FindQueueFamily(physicalDevice, VK_QUEUE_GRAPHICS_BIT, &graphicsQueueFamily);
 	vkGetDeviceQueue(device, graphicsQueueFamily, 0, &graphicsQueue);
 }
 

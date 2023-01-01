@@ -9,6 +9,11 @@ public:
 	void Destroy();
 	void CommitFrame(uint32_t count);
 
+	uint32_t GetFrameSize() const { return frameSize; }
+	GLuint GetGLBuffer() const { return glBuffer; }
+	byte *CurrentWriteLocation() const;
+	const void * BufferOffset( const void *pointer );
+
 	static const int NUM_FRAMES = 3;
 
 private:
@@ -18,6 +23,7 @@ private:
 	uint32_t alignment = 0;
 	VkBuffer stagingBuffer = nullptr;
 	VmaAllocation stagingAllocation = nullptr;
+	void *mappedData = nullptr;
 	VkBuffer gpuBuffer = nullptr;
 	VmaAllocation gpuAllocation = nullptr;
 	VkCommandBuffer transferCmds[NUM_FRAMES] = {nullptr};

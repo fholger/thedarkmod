@@ -88,7 +88,8 @@ void FrameAheadGpuBuffer::CommitFrame(uint32_t count)
 	submitInfo.pCommandBuffers = &transferCmd;
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &bufferReadySignal[currentFrame];
-	vkQueueSubmit(vulkan->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	VulkanSystem::EnsureSuccess("submitting buffer transfer",
+		vkQueueSubmit(vulkan->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE));
 
 	// OpenGL interop - await transfer complete
 	qglWaitSemaphoreEXT(glBufferReadySignal[currentFrame], 1, &glBuffer, 0, nullptr, nullptr);
@@ -96,13 +97,29 @@ void FrameAheadGpuBuffer::CommitFrame(uint32_t count)
 	currentFrame = (currentFrame + 1) % NUM_FRAMES;
 }
 
+byte * FrameAheadGpuBuffer::CurrentWriteLocation() const
+{
+	return ((byte*)mappedData) + currentFrame * frameSize;
+}
+
+const void * FrameAheadGpuBuffer::BufferOffset(const void *pointer)
+{
+	ptrdiff_t mapOffset = static_cast< const byte* >( pointer ) - mappedData;
+	assert( (size_t)mapOffset < (size_t)bufferSize );
+	return reinterpret_cast< const void* >( mapOffset );
+}
+
 void FrameAheadGpuBuffer::CreateStagingBuffer()
 {
+	VkExternalMemoryBufferCreateInfoKHR extMemInfo {};
+	extMemInfo.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO_KHR;
+	extMemInfo.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR;
 	VkBufferCreateInfo createInfo {};
 	createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	createInfo.size = bufferSize;
 	createInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	createInfo.pNext = &extMemInfo;
 
 	VmaAllocationCreateInfo allocCreateInfo {};
 	allocCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
@@ -113,17 +130,22 @@ void FrameAheadGpuBuffer::CreateStagingBuffer()
 	VulkanSystem::EnsureSuccess("creating frame-ahead staging buffer",
 		vmaCreateBuffer(vulkan->allocator, &createInfo, &allocCreateInfo,
 			&stagingBuffer, &stagingAllocation, &allocInfo));
+	mappedData = allocInfo.pMappedData;
 }
 
 extern void GL_CheckErrors();
 
 void FrameAheadGpuBuffer::CreateGpuBuffer()
 {
+	VkExternalMemoryBufferCreateInfoKHR extMemInfo {};
+	extMemInfo.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO_KHR;
+	extMemInfo.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR;
 	VkBufferCreateInfo createInfo {};
 	createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	createInfo.size = bufferSize;
 	createInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | usage;
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	createInfo.pNext = &extMemInfo;
 
 	VmaAllocationCreateInfo allocCreateInfo {};
 	allocCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -161,8 +183,14 @@ void FrameAheadGpuBuffer::CreateTransferCommandBuffers()
 
 void FrameAheadGpuBuffer::CreateSemaphores()
 {
+	VkExportSemaphoreCreateInfoKHR exportInfo {};
+	exportInfo.sType = VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO_KHR;
+	exportInfo.handleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR;
+
 	VkSemaphoreCreateInfo createInfo {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	createInfo.pNext = &exportInfo;
+
 	VkSemaphoreGetWin32HandleInfoKHR handleInfo {};
 	handleInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR;
 	handleInfo.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR;

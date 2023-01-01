@@ -48,30 +48,24 @@ static void ClearGeoBufferSet( geoBufferSet_t &gbs ) {
 }
 
 static void SwitchFrameGeoBufferSet( geoBufferSet_t &gbs ) {
-	int commitVertexBytes = Min( gbs.vertexMemUsed.GetValue(), (int)gbs.vertexBuffer.BytesRemaining() );
-	gbs.vertexBuffer.Commit( commitVertexBytes );
-	gbs.vertexBuffer.SwitchFrame();
-	int commitIndexBytes = Min( gbs.indexMemUsed.GetValue(), (int)gbs.indexBuffer.BytesRemaining() );
-	gbs.indexBuffer.Commit( commitIndexBytes );
-	gbs.indexBuffer.SwitchFrame();
+	int commitVertexBytes = Min( gbs.vertexMemUsed.GetValue(), (int)gbs.vertexBuffer.GetFrameSize() );
+	gbs.vertexBuffer.CommitFrame( commitVertexBytes );
+	int commitIndexBytes = Min( gbs.indexMemUsed.GetValue(), (int)gbs.indexBuffer.GetFrameSize() );
+	gbs.indexBuffer.CommitFrame( commitIndexBytes );
 	ClearGeoBufferSet( gbs );
 }
 
 static void AllocGeoBufferSet( geoBufferSet_t &gbs, const int vertexBytes, const int indexBytes ) {
-	gbs.vertexBuffer.InitWriteFrameAhead( GL_ARRAY_BUFFER, vertexBytes, VERTEX_CACHE_ALIGN );
-	gbs.indexBuffer.InitWriteFrameAhead( GL_ELEMENT_ARRAY_BUFFER, indexBytes, INDEX_CACHE_ALIGN );
-	GL_SetDebugLabel( GL_BUFFER, gbs.vertexBuffer.GetAPIObject(), "DynamicVertexCache" );
-	GL_SetDebugLabel( GL_BUFFER, gbs.indexBuffer.GetAPIObject(), "DynamicIndexCache" );
-	gbs.newVertexBuffer.Init(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertexBytes, VERTEX_CACHE_ALIGN);
-	gbs.newIndexBuffer.Init(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indexBytes, INDEX_CACHE_ALIGN);
+	gbs.vertexBuffer.Init( VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertexBytes, VERTEX_CACHE_ALIGN );
+	gbs.indexBuffer.Init( VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indexBytes, INDEX_CACHE_ALIGN );
+	GL_SetDebugLabel( GL_BUFFER, gbs.vertexBuffer.GetGLBuffer(), "DynamicVertexCache" );
+	GL_SetDebugLabel( GL_BUFFER, gbs.indexBuffer.GetGLBuffer(), "DynamicIndexCache" );
 	ClearGeoBufferSet( gbs );
 }
 
 static void FreeGeoBufferSet( geoBufferSet_t &gbs ) {
 	gbs.vertexBuffer.Destroy();
 	gbs.indexBuffer.Destroy();
-	gbs.newVertexBuffer.Destroy();
-	gbs.newIndexBuffer.Destroy();
 }
 
 /* duzenko 2.08
@@ -110,7 +104,7 @@ void idVertexCache::VertexPosition( vertCacheHandle_t handle, attribBind_t attri
 		if ( handle.isStatic ) {
 			vbo = ( attrib == ATTRIB_REGULAR ? staticVertexBuffer : staticShadowBuffer );
 		} else {
-			vbo = dynamicData.vertexBuffer.GetAPIObject();
+			vbo = dynamicData.vertexBuffer.GetGLBuffer();
 		}
 	}
 
@@ -147,7 +141,7 @@ void *idVertexCache::IndexPosition( vertCacheHandle_t handle ) {
 		if ( handle.isStatic ) {
 			vbo = staticIndexBuffer;
 		} else {
-			vbo = dynamicData.indexBuffer.GetAPIObject();
+			vbo = dynamicData.indexBuffer.GetGLBuffer();
 		}
 	}
 
@@ -260,6 +254,11 @@ void idVertexCache::EndFrame() {
 		}
 	}
 
+	// 2.08 temp helper for RB_DrawFullScreenQuad on core contexts
+	screenRectSurf.ambientCache = AllocVertex( screenRectVerts, sizeof( screenRectVerts ) );
+	screenRectSurf.indexCache = AllocIndex( &screenRectIndices, sizeof( screenRectIndices ) );
+	screenRectSurf.numIndexes = 6;
+
 	// switch dynamic buffer to next frame
 	SwitchFrameGeoBufferSet( dynamicData );
 	currentFrame++;
@@ -267,21 +266,16 @@ void idVertexCache::EndFrame() {
 
 	// check if we need to resize current buffer set
 	if (
-		(int)dynamicData.vertexBuffer.BytesRemaining() < currentVertexCacheSize ||
-		(int)dynamicData.indexBuffer.BytesRemaining() < currentIndexCacheSize
+		(int)dynamicData.vertexBuffer.GetFrameSize() < currentVertexCacheSize ||
+		(int)dynamicData.indexBuffer.GetFrameSize() < currentIndexCacheSize
 	) {
-		common->Printf( "Resizing dynamic VertexCache: index %d kb -> %d kb, vertex %d kb -> %d kb\n", dynamicData.indexBuffer.BytesRemaining() / 1024, currentIndexCacheSize / 1024, dynamicData.indexBuffer.BytesRemaining() / 1024, currentVertexCacheSize / 1024 );
+		common->Printf( "Resizing dynamic VertexCache: index %d kb -> %d kb, vertex %d kb -> %d kb\n", dynamicData.indexBuffer.GetFrameSize() / 1024, currentIndexCacheSize / 1024, dynamicData.indexBuffer.GetFrameSize() / 1024, currentVertexCacheSize / 1024 );
 		FreeGeoBufferSet( dynamicData );
 		AllocGeoBufferSet( dynamicData, currentVertexCacheSize, currentIndexCacheSize );
 	}
 
 	qglBindBuffer( GL_ARRAY_BUFFER, currentVertexBuffer = 0 );
 	qglBindBuffer( GL_ELEMENT_ARRAY_BUFFER, currentIndexBuffer = 0 );
-
-	// 2.08 temp helper for RB_DrawFullScreenQuad on core contexts
-	screenRectSurf.ambientCache = AllocVertex( screenRectVerts, sizeof( screenRectVerts ) );
-	screenRectSurf.indexCache = AllocIndex( &screenRectIndices, sizeof( screenRectIndices ) );
-	screenRectSurf.numIndexes = 6;
 }
 
 /*

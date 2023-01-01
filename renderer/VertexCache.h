@@ -42,10 +42,8 @@ enum cacheType_t {
 };
 
 struct geoBufferSet_t {
-	GpuBuffer			indexBuffer;
-	GpuBuffer			vertexBuffer;
-	FrameAheadGpuBuffer	newIndexBuffer;
-	FrameAheadGpuBuffer	newVertexBuffer;
+	FrameAheadGpuBuffer	indexBuffer;
+	FrameAheadGpuBuffer	vertexBuffer;
 	byte *				mappedVertexBase;
 	byte *				mappedIndexBase;
 	idSysInterlockedInteger	indexMemUsed;
