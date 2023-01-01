@@ -36,6 +36,7 @@ void VulkanSystem::Init()
 	PickPhysicalDevice();
 	CreateDevice();
 	CreateMemoryAllocator();
+	CreateCommandPools();
 }
 
 void VulkanSystem::Shutdown()
@@ -259,9 +260,8 @@ void VulkanSystem::CreateDevice()
 	EnsureSuccess("creating device", vkCreateDevice(physicalDevice, &createInfo, nullptr, &device));
 	volkLoadDevice(device);
 
-	uint32_t graphicsQueueIndex;
-	FindQueueFamily(physicalDevice, VK_QUEUE_GRAPHICS_BIT, &graphicsQueueIndex);
-	vkGetDeviceQueue(device, graphicsQueueIndex, 0, &graphicsQueue);
+	FindQueueFamily(physicalDevice, VK_QUEUE_GRAPHICS_BIT, &graphicsQueueFamily);
+	vkGetDeviceQueue(device, graphicsQueueFamily, 0, &graphicsQueue);
 }
 
 void VulkanSystem::CreateMemoryAllocator()
@@ -312,4 +312,13 @@ void VulkanSystem::CreateMemoryAllocator()
 	createInfo.pVulkanFunctions = &functions;
 	createInfo.pTypeExternalMemoryHandleTypes = externalMemoryTypes.Ptr();
 	EnsureSuccess("creating memory allocator", vmaCreateAllocator(&createInfo, &allocator));
+}
+
+void VulkanSystem::CreateCommandPools()
+{
+	VkCommandPoolCreateInfo createInfo {};
+	createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	createInfo.queueFamilyIndex = graphicsQueueFamily;
+	createInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	EnsureSuccess("creating command pool", vkCreateCommandPool(device, &createInfo, nullptr, &commandPool));
 }

@@ -13,15 +13,37 @@ void FrameAheadGpuBuffer::Init(VkBufferUsageFlags usage, uint32_t size, uint32_t
 	}
 	this->usage = usage;
 	this->alignment = alignment;
-	bufferSize = ALIGN( size, alignment );
-	stagingSize = NUM_FRAMES * bufferSize;
+	frameSize = ALIGN( size, alignment );
+	bufferSize = NUM_FRAMES * frameSize;
 
 	CreateStagingBuffer();
 	CreateGpuBuffer();
+	CreateTransferCommandBuffers();
+	CreateSemaphores();
+
+	currentFrame = 0;
 }
 
 void FrameAheadGpuBuffer::Destroy()
 {
+	if (glBufferReadySignal[0])
+	{
+		qglDeleteSemaphoresEXT(NUM_FRAMES, glBufferReadySignal);
+		glBufferReadySignal[0] = 0;
+	}
+	if (bufferReadySignal[0])
+	{
+		for (int i = 0; i < NUM_FRAMES; ++i)
+		{
+			vkDestroySemaphore(vulkan->device, bufferReadySignal[i], nullptr);
+			bufferReadySignal[i] = nullptr;
+		}
+	}
+	if (transferCmds[0])
+	{
+		vkFreeCommandBuffers(vulkan->device, vulkan->commandPool, NUM_FRAMES, transferCmds);
+		transferCmds[0] = nullptr;
+	}
 	if (glBuffer)
 	{
 		qglDeleteBuffers(1, &glBuffer);
@@ -46,11 +68,39 @@ void FrameAheadGpuBuffer::Destroy()
 	}
 }
 
+void FrameAheadGpuBuffer::CommitFrame(uint32_t count)
+{
+	VkCommandBufferBeginInfo beginInfo {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	VkCommandBuffer transferCmd = transferCmds[currentFrame];
+	VulkanSystem::EnsureSuccess("creating transfer command", vkBeginCommandBuffer(transferCmd, &beginInfo));
+	VkBufferCopy region;
+	region.size = count;
+	region.srcOffset = currentFrame * frameSize;
+	region.dstOffset = region.srcOffset;
+	vkCmdCopyBuffer(transferCmd, stagingBuffer, gpuBuffer, 1, &region);
+	vkEndCommandBuffer(transferCmd);
+
+	VkSubmitInfo submitInfo {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &transferCmd;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &bufferReadySignal[currentFrame];
+	vkQueueSubmit(vulkan->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+
+	// OpenGL interop - await transfer complete
+	qglWaitSemaphoreEXT(glBufferReadySignal[currentFrame], 1, &glBuffer, 0, nullptr, nullptr);
+
+	currentFrame = (currentFrame + 1) % NUM_FRAMES;
+}
+
 void FrameAheadGpuBuffer::CreateStagingBuffer()
 {
 	VkBufferCreateInfo createInfo {};
 	createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	createInfo.size = stagingSize;
+	createInfo.size = bufferSize;
 	createInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -95,6 +145,40 @@ void FrameAheadGpuBuffer::CreateGpuBuffer()
 	qglImportMemoryWin32HandleEXT(glMemoryObject, allocInfo.size + allocInfo.offset, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT, handle);
 	GL_CheckErrors();
 	qglCreateBuffers(1, &glBuffer);
-	qglNamedBufferStorageMemEXT(glBuffer, bufferSize, glMemoryObject, allocInfo.offset);
+	qglNamedBufferStorageMemEXT(glBuffer, frameSize, glMemoryObject, allocInfo.offset);
 	GL_CheckErrors();
+}
+
+void FrameAheadGpuBuffer::CreateTransferCommandBuffers()
+{
+	VkCommandBufferAllocateInfo bufAllocInfo {};
+	bufAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	bufAllocInfo.commandPool = vulkan->commandPool;
+	bufAllocInfo.commandBufferCount = NUM_FRAMES;
+	bufAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	VulkanSystem::EnsureSuccess("creating transfer command buffers", vkAllocateCommandBuffers(vulkan->device, &bufAllocInfo, transferCmds));
+}
+
+void FrameAheadGpuBuffer::CreateSemaphores()
+{
+	VkSemaphoreCreateInfo createInfo {};
+	createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	VkSemaphoreGetWin32HandleInfoKHR handleInfo {};
+	handleInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR;
+	handleInfo.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR;
+
+	for (int i = 0; i < NUM_FRAMES; ++i)
+	{
+		VulkanSystem::EnsureSuccess("creating semaphore",
+			vkCreateSemaphore(vulkan->device, &createInfo, nullptr, &bufferReadySignal[i]));
+
+		// OpenGL interop
+		handleInfo.semaphore = bufferReadySignal[i];
+		VulkanSystem::EnsureSuccess("getting semaphore handle", 
+			vkGetSemaphoreWin32HandleKHR(vulkan->device, &handleInfo, &handle));
+
+		qglGenSemaphoresEXT(1, &glBufferReadySignal[i]);
+		qglImportSemaphoreWin32HandleEXT(glBufferReadySignal[i], GL_HANDLE_TYPE_OPAQUE_WIN32_EXT, handle);
+		GL_CheckErrors();
+	}
 }
