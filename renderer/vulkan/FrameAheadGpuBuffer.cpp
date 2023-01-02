@@ -70,15 +70,18 @@ void FrameAheadGpuBuffer::Destroy()
 
 void FrameAheadGpuBuffer::CommitFrame(uint32_t count)
 {
+	VkBufferCopy region;
+	region.size = count;
+	region.srcOffset = currentFrame * frameSize;
+	region.dstOffset = region.srcOffset;
+
+	vmaFlushAllocation(vulkan->allocator, stagingAllocation, region.srcOffset, region.size);
+
 	VkCommandBufferBeginInfo beginInfo {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	VkCommandBuffer transferCmd = transferCmds[currentFrame];
 	VulkanSystem::EnsureSuccess("creating transfer command", vkBeginCommandBuffer(transferCmd, &beginInfo));
-	VkBufferCopy region;
-	region.size = count;
-	region.srcOffset = currentFrame * frameSize;
-	region.dstOffset = region.srcOffset;
 	vkCmdCopyBuffer(transferCmd, stagingBuffer, gpuBuffer, 1, &region);
 	vkEndCommandBuffer(transferCmd);
 
@@ -89,7 +92,7 @@ void FrameAheadGpuBuffer::CommitFrame(uint32_t count)
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &bufferReadySignal[currentFrame];
 	VulkanSystem::EnsureSuccess("submitting buffer transfer",
-		vkQueueSubmit(vulkan->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE));
+		vkQueueSubmit(vulkan->graphicsQueue, 1, &submitInfo, nullptr));
 
 	// OpenGL interop - await transfer complete
 	qglWaitSemaphoreEXT(glBufferReadySignal[currentFrame], 1, &glBuffer, 0, nullptr, nullptr);
@@ -167,7 +170,7 @@ void FrameAheadGpuBuffer::CreateGpuBuffer()
 	qglImportMemoryWin32HandleEXT(glMemoryObject, allocInfo.size + allocInfo.offset, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT, handle);
 	GL_CheckErrors();
 	qglCreateBuffers(1, &glBuffer);
-	qglNamedBufferStorageMemEXT(glBuffer, frameSize, glMemoryObject, allocInfo.offset);
+	qglNamedBufferStorageMemEXT(glBuffer, bufferSize, glMemoryObject, allocInfo.offset);
 	GL_CheckErrors();
 }
 
@@ -201,6 +204,7 @@ void FrameAheadGpuBuffer::CreateSemaphores()
 			vkCreateSemaphore(vulkan->device, &createInfo, nullptr, &bufferReadySignal[i]));
 
 		// OpenGL interop
+		HANDLE handle;
 		handleInfo.semaphore = bufferReadySignal[i];
 		VulkanSystem::EnsureSuccess("getting semaphore handle", 
 			vkGetSemaphoreWin32HandleKHR(vulkan->device, &handleInfo, &handle));

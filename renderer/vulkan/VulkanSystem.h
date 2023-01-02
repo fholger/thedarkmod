@@ -16,10 +16,9 @@ public:
 	VkQueue graphicsQueue = VK_NULL_HANDLE;
 	VmaAllocator allocator = VK_NULL_HANDLE;
 	VkCommandPool commandPool = VK_NULL_HANDLE;
-
-private:
 	uint32_t graphicsQueueFamily = 0;
 
+private:
 	void CreateInstance();
 	void CreateDebugMessenger();
 	void PopulateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
