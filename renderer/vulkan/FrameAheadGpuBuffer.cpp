@@ -13,8 +13,8 @@ void FrameAheadGpuBuffer::Init(VkBufferUsageFlags usage, uint32_t size, uint32_t
 	frameSize = ALIGN( size, alignment );
 	bufferSize = NUM_FRAMES * frameSize;
 
-	gpuBuffer.Init(usage, size);
-	CreateStagingBuffer();
+	gpuBuffer.Init(usage, bufferSize);
+	stagingBuffer.Init(bufferSize);
 	CreateTransferCommandBuffers();
 	CreateSemaphores();
 
@@ -42,29 +42,20 @@ void FrameAheadGpuBuffer::Destroy()
 		transferCmds[0] = nullptr;
 	}
 	gpuBuffer.Destroy();
-	if (stagingBuffer)
-	{
-		vmaDestroyBuffer(vulkan->allocator, stagingBuffer, stagingAllocation);
-		stagingBuffer = nullptr;
-		stagingAllocation = nullptr;
-	}
+	stagingBuffer.Destroy();
 }
 
 void FrameAheadGpuBuffer::CommitFrame(uint32_t count)
 {
-	VkBufferCopy region;
-	region.size = count;
-	region.srcOffset = currentFrame * frameSize;
-	region.dstOffset = region.srcOffset;
-
-	vmaFlushAllocation(vulkan->allocator, stagingAllocation, region.srcOffset, region.size);
-
 	VkCommandBufferBeginInfo beginInfo {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	VkCommandBuffer transferCmd = transferCmds[currentFrame];
-	VulkanSystem::EnsureSuccess("creating transfer command", vkBeginCommandBuffer(transferCmd, &beginInfo));
-	vkCmdCopyBuffer(transferCmd, stagingBuffer, gpuBuffer.buffer, 1, &region);
+	VulkanSystem::EnsureSuccess("beginning transfer command", vkBeginCommandBuffer(transferCmd, &beginInfo));
+
+	uint32_t offset = currentFrame * frameSize;
+	stagingBuffer.CopyBuffer(transferCmd, gpuBuffer, count, offset, offset);
+
 	vkEndCommandBuffer(transferCmd);
 
 	VkSubmitInfo submitInfo {};
@@ -84,38 +75,14 @@ void FrameAheadGpuBuffer::CommitFrame(uint32_t count)
 
 byte * FrameAheadGpuBuffer::CurrentWriteLocation() const
 {
-	return ((byte*)mappedData) + currentFrame * frameSize;
+	return stagingBuffer.MappedData() + currentFrame * frameSize;
 }
 
 const void * FrameAheadGpuBuffer::BufferOffset(const void *pointer)
 {
-	ptrdiff_t mapOffset = static_cast< const byte* >( pointer ) - mappedData;
+	ptrdiff_t mapOffset = static_cast< const byte* >( pointer ) - stagingBuffer.MappedData();
 	assert( (size_t)mapOffset < (size_t)bufferSize );
 	return reinterpret_cast< const void* >( mapOffset );
-}
-
-void FrameAheadGpuBuffer::CreateStagingBuffer()
-{
-	VkExternalMemoryBufferCreateInfoKHR extMemInfo {};
-	extMemInfo.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO_KHR;
-	extMemInfo.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR;
-	VkBufferCreateInfo createInfo {};
-	createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	createInfo.size = bufferSize;
-	createInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	createInfo.pNext = &extMemInfo;
-
-	VmaAllocationCreateInfo allocCreateInfo {};
-	allocCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-	allocCreateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-	allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
-
-	VmaAllocationInfo allocInfo;
-	VulkanSystem::EnsureSuccess("creating frame-ahead staging buffer",
-		vmaCreateBuffer(vulkan->allocator, &createInfo, &allocCreateInfo,
-			&stagingBuffer, &stagingAllocation, &allocInfo));
-	mappedData = allocInfo.pMappedData;
 }
 
 extern void GL_CheckErrors();

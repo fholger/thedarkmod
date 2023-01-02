@@ -1,6 +1,7 @@
 #pragma once
 
 #include "DeviceLocalBuffer.h"
+#include "StagingBuffer.h"
 
 class FrameAheadGpuBuffer
 {
@@ -22,16 +23,13 @@ private:
 	uint32_t bufferSize = 0;
 	uint32_t alignment = 0;
 	DeviceLocalBuffer gpuBuffer;
-	VkBuffer stagingBuffer = nullptr;
-	VmaAllocation stagingAllocation = nullptr;
-	void *mappedData = nullptr;
+	StagingBuffer stagingBuffer;
 	VkCommandBuffer transferCmds[NUM_FRAMES] = {nullptr};
 	VkSemaphore bufferReadySignal[NUM_FRAMES] = {nullptr};
 	GLuint glBufferReadySignal[NUM_FRAMES] = {0};
 
 	uint32_t currentFrame = 0;
 
-	void CreateStagingBuffer();
 	void CreateTransferCommandBuffers();
 	void CreateSemaphores();
 };
