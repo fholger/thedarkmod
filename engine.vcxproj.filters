@@ -1639,6 +1639,12 @@
     <ClInclude Include="renderer\vulkan\FrameAheadGpuBuffer.h">
       <Filter>Renderer\Vulkan</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\vulkan\DeviceLocalBuffer.h">
+      <Filter>Renderer\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\vulkan\StagingBuffer.h">
+      <Filter>Renderer\Vulkan</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -3614,6 +3620,12 @@
       <Filter>Renderer\Vulkan</Filter>
     </ClCompile>
     <ClCompile Include="renderer\vulkan\FrameAheadGpuBuffer.cpp">
+      <Filter>Renderer\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\vulkan\DeviceLocalBuffer.cpp">
+      <Filter>Renderer\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\vulkan\StagingBuffer.cpp">
       <Filter>Renderer\Vulkan</Filter>
     </ClCompile>
   </ItemGroup>

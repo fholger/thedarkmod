@@ -7,17 +7,14 @@ const int FrameAheadGpuBuffer::NUM_FRAMES;
 
 void FrameAheadGpuBuffer::Init(VkBufferUsageFlags usage, uint32_t size, uint32_t alignment)
 {
-	if (gpuBuffer)
-	{
-		Destroy();
-	}
+	gpuBuffer.Destroy();
 	this->usage = usage;
 	this->alignment = alignment;
 	frameSize = ALIGN( size, alignment );
 	bufferSize = NUM_FRAMES * frameSize;
 
+	gpuBuffer.Init(usage, size);
 	CreateStagingBuffer();
-	CreateGpuBuffer();
 	CreateTransferCommandBuffers();
 	CreateSemaphores();
 
@@ -44,22 +41,7 @@ void FrameAheadGpuBuffer::Destroy()
 		vkFreeCommandBuffers(vulkan->device, vulkan->commandPool, NUM_FRAMES, transferCmds);
 		transferCmds[0] = nullptr;
 	}
-	if (glBuffer)
-	{
-		qglDeleteBuffers(1, &glBuffer);
-		glBuffer = 0;
-	}
-	if (glMemoryObject)
-	{
-		qglDeleteMemoryObjectsEXT(1, &glMemoryObject);
-		glMemoryObject = 0;
-	}
-	if (gpuBuffer)
-	{
-		vmaDestroyBuffer(vulkan->allocator, gpuBuffer, gpuAllocation);
-		gpuBuffer = nullptr;
-		gpuAllocation = nullptr;
-	}
+	gpuBuffer.Destroy();
 	if (stagingBuffer)
 	{
 		vmaDestroyBuffer(vulkan->allocator, stagingBuffer, stagingAllocation);
@@ -82,7 +64,7 @@ void FrameAheadGpuBuffer::CommitFrame(uint32_t count)
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	VkCommandBuffer transferCmd = transferCmds[currentFrame];
 	VulkanSystem::EnsureSuccess("creating transfer command", vkBeginCommandBuffer(transferCmd, &beginInfo));
-	vkCmdCopyBuffer(transferCmd, stagingBuffer, gpuBuffer, 1, &region);
+	vkCmdCopyBuffer(transferCmd, stagingBuffer, gpuBuffer.buffer, 1, &region);
 	vkEndCommandBuffer(transferCmd);
 
 	VkSubmitInfo submitInfo {};
@@ -95,7 +77,7 @@ void FrameAheadGpuBuffer::CommitFrame(uint32_t count)
 		vkQueueSubmit(vulkan->graphicsQueue, 1, &submitInfo, nullptr));
 
 	// OpenGL interop - await transfer complete
-	qglWaitSemaphoreEXT(glBufferReadySignal[currentFrame], 1, &glBuffer, 0, nullptr, nullptr);
+	qglWaitSemaphoreEXT(glBufferReadySignal[currentFrame], 1, &gpuBuffer.glBuffer, 0, nullptr, nullptr);
 
 	currentFrame = (currentFrame + 1) % NUM_FRAMES;
 }
@@ -137,42 +119,6 @@ void FrameAheadGpuBuffer::CreateStagingBuffer()
 }
 
 extern void GL_CheckErrors();
-
-void FrameAheadGpuBuffer::CreateGpuBuffer()
-{
-	VkExternalMemoryBufferCreateInfoKHR extMemInfo {};
-	extMemInfo.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO_KHR;
-	extMemInfo.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR;
-	VkBufferCreateInfo createInfo {};
-	createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	createInfo.size = bufferSize;
-	createInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | usage;
-	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	createInfo.pNext = &extMemInfo;
-
-	VmaAllocationCreateInfo allocCreateInfo {};
-	allocCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-
-	VmaAllocationInfo allocInfo;
-	VulkanSystem::EnsureSuccess("creating frame-ahead GPU buffer",
-		vmaCreateBufferWithAlignment(vulkan->allocator, &createInfo, &allocCreateInfo, 32,
-			&gpuBuffer, &gpuAllocation, &allocInfo));
-
-	// OpenGL interop: export and expose buffer to OpenGL
-	VkMemoryGetWin32HandleInfoKHR handleInfo {};
-	handleInfo.sType = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
-	handleInfo.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR;
-	handleInfo.memory = allocInfo.deviceMemory;
-	VulkanSystem::EnsureSuccess("getting Win32 memory handle", vkGetMemoryWin32HandleKHR(vulkan->device, &handleInfo, &handle));
-
-	qglCreateMemoryObjectsEXT(1, &glMemoryObject);
-	qglImportMemoryWin32HandleEXT(glMemoryObject, allocInfo.size + allocInfo.offset, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT, handle);
-	GL_CheckErrors();
-	qglCreateBuffers(1, &glBuffer);
-	qglNamedBufferStorageMemEXT(glBuffer, bufferSize, glMemoryObject, allocInfo.offset);
-	GL_CheckErrors();
-}
 
 void FrameAheadGpuBuffer::CreateTransferCommandBuffers()
 {
