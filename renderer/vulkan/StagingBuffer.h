@@ -15,8 +15,8 @@ public:
 
 	byte *MappedData() const { return (byte*)mappedData; }
 
-private:
 	VkBuffer buffer = nullptr;
+private:
 	VmaAllocation allocation = nullptr;
 	void *mappedData = nullptr;
 };
