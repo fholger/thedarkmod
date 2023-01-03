@@ -41,6 +41,11 @@ void VulkanSystem::Init()
 
 void VulkanSystem::Shutdown()
 {
+	if (commandPool != nullptr)
+	{
+		vkDestroyCommandPool(device, commandPool, nullptr);
+		commandPool = nullptr;
+	}
 	if (allocator != nullptr)
 	{
 		vmaDestroyAllocator(allocator);

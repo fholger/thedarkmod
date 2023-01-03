@@ -126,10 +126,10 @@ private:
 	int				currentFrame;			// for purgable block tracking
 	int				basePointer;
 
-	geoBufferSet_t	dynamicData;
-	GLuint			staticVertexBuffer;
-	GLuint			staticIndexBuffer;
-	GLuint			staticShadowBuffer;
+	geoBufferSet_t		dynamicData;
+	DeviceLocalBuffer	staticVertexBuffer;
+	DeviceLocalBuffer	staticIndexBuffer;
+	DeviceLocalBuffer	staticShadowBuffer;
 
 	GLuint			currentVertexBuffer;
 	GLuint			currentIndexBuffer;

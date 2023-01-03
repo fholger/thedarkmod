@@ -18,6 +18,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #pragma hdrstop
 
 #include "tr_local.h"
+#include "vulkan/VulkanSystem.h"
 
 const int32 MAX_VERTCACHE_SIZE = INT_MAX;
 
@@ -102,7 +103,7 @@ void idVertexCache::VertexPosition( vertCacheHandle_t handle, attribBind_t attri
 	} else {
 		++vertexUseCount;
 		if ( handle.isStatic ) {
-			vbo = ( attrib == ATTRIB_REGULAR ? staticVertexBuffer : staticShadowBuffer );
+			vbo = ( attrib == ATTRIB_REGULAR ? staticVertexBuffer.glBuffer : staticShadowBuffer.glBuffer );
 		} else {
 			vbo = dynamicData.vertexBuffer.GetGLBuffer();
 		}
@@ -139,7 +140,7 @@ void *idVertexCache::IndexPosition( vertCacheHandle_t handle ) {
 	} else {
 		++indexUseCount;
 		if ( handle.isStatic ) {
-			vbo = staticIndexBuffer;
+			vbo = staticIndexBuffer.glBuffer;
 		} else {
 			vbo = dynamicData.indexBuffer.GetGLBuffer();
 		}
@@ -187,9 +188,9 @@ void idVertexCache::Init() {
 	qglGenVertexArrays( 1, &vao );
 	qglBindVertexArray( vao ); 
 
-	staticVertexBuffer = 0;
-	staticIndexBuffer = 0;
-	staticShadowBuffer = 0;
+	staticVertexBuffer.Destroy();
+	staticIndexBuffer.Destroy();
+	staticShadowBuffer.Destroy();
 	
 	AllocGeoBufferSet( dynamicData, currentVertexCacheSize, currentIndexCacheSize );
 	EndFrame();
@@ -217,18 +218,9 @@ void idVertexCache::Shutdown() {
 	ClearGeoBufferSet( dynamicData );
 	FreeGeoBufferSet( dynamicData );
 
-	if ( staticVertexBuffer != 0 ) {
-		qglDeleteBuffers( 1, &staticVertexBuffer );
-		staticVertexBuffer = 0;
-	}
-	if ( staticIndexBuffer != 0 ) {
-		qglDeleteBuffers( 1, &staticIndexBuffer );
-		staticIndexBuffer = 0;
-	}
-	if ( staticShadowBuffer != 0 ) {
-		qglDeleteBuffers( 1, &staticShadowBuffer );
-		staticShadowBuffer = 0;
-	}
+	staticVertexBuffer.Destroy();
+	staticIndexBuffer.Destroy();
+	staticShadowBuffer.Destroy();
 }
 
 /*
@@ -355,9 +347,9 @@ idVertexCache::PrepareStaticCacheForUpload
 */
 void idVertexCache::PrepareStaticCacheForUpload() {
 	// upload function to be called twice for vertex and index data
-	auto upload = [](GLuint buffer, GLenum bufferType, int size, StaticList &staticList ) {
-		int offset = 0;
-		byte* ptr = (byte*)Mem_Alloc16( size );
+	auto upload = [](VkCommandBuffer cmd, DeviceLocalBuffer &buffer, StagingBuffer &staging, uint32_t start, StaticList &staticList ) {
+		byte *ptr = staging.MappedData();
+		uint32_t offset = start;
 		for ( auto& entry : staticList ) {
 			memcpy( ptr + offset, entry.ptr, entry.size );
 			offset += entry.size;
@@ -366,39 +358,51 @@ void idVertexCache::PrepareStaticCacheForUpload() {
 				entry.ptr = nullptr;
 			}
 		}
-		qglBindBuffer( bufferType, buffer );
-		if ( GLAD_GL_ARB_buffer_storage ) {
-			qglBufferStorage( bufferType, size, ptr, 0 );
-		} else {
-			qglBufferData( bufferType, size, ptr, GL_STATIC_DRAW );
-		}
-		Mem_Free16( ptr );
 		staticList.ClearFree();
+		staging.CopyBuffer(cmd, buffer, offset - start, start, 0);
 	};
 
-	if ( staticVertexBuffer != 0 ) {
-		qglDeleteBuffers( 1, &staticVertexBuffer );
-	}
-	if ( staticIndexBuffer != 0 ) {
-		qglDeleteBuffers( 1, &staticIndexBuffer );
-	}
-	if ( staticShadowBuffer != 0 ) {
-		qglDeleteBuffers( 1, &staticShadowBuffer );
-	}
-	qglGenBuffers( 1, &staticVertexBuffer );
-	qglGenBuffers( 1, &staticIndexBuffer );
-	qglGenBuffers( 1, &staticShadowBuffer );
-
 	staticVertexSize = ALIGN( staticVertexSize, VERTEX_CACHE_ALIGN );
-	upload( staticVertexBuffer, GL_ARRAY_BUFFER, staticVertexSize, staticVertexList );
 	staticIndexSize = ALIGN( staticIndexSize, INDEX_CACHE_ALIGN );
-	upload( staticIndexBuffer, GL_ELEMENT_ARRAY_BUFFER, staticIndexSize, staticIndexList );
 	staticShadowSize = ALIGN( staticShadowSize, SHADOW_CACHE_ALIGN );
-	upload( staticShadowBuffer, GL_ARRAY_BUFFER, staticShadowSize, staticShadowList );
+	staticVertexBuffer.Init(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, staticVertexSize);
+	staticIndexBuffer.Init(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, staticIndexSize);
+	staticShadowBuffer.Init(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, staticShadowSize);
 
-	GL_SetDebugLabel( GL_BUFFER, staticVertexBuffer, "StaticVertexCache" );
-	GL_SetDebugLabel( GL_BUFFER, staticIndexBuffer, "StaticIndexCache" );
-	GL_SetDebugLabel( GL_BUFFER, staticShadowBuffer, "StaticShadowCache" );
+	// fixme: probably better to offload part of this to the VulkanSystem and doing a deferred Destroy of
+	// the staging buffer instead of waiting for the completion of the transfer here
+	VkCommandBuffer cmd;
+	VkCommandBufferAllocateInfo bufAllocInfo {};
+	bufAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	bufAllocInfo.commandPool = vulkan->commandPool;
+	bufAllocInfo.commandBufferCount = 1;
+	bufAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	VulkanSystem::EnsureSuccess("creating transfer command buffers", vkAllocateCommandBuffers(vulkan->device, &bufAllocInfo, &cmd));
+	VkCommandBufferBeginInfo beginInfo {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	vkBeginCommandBuffer(cmd, &beginInfo);
+
+	StagingBuffer staging;
+	staging.Init(staticVertexSize + staticIndexSize + staticShadowSize);
+	upload( cmd, staticVertexBuffer, staging, 0, staticVertexList );
+	upload( cmd, staticIndexBuffer, staging, staticVertexSize, staticIndexList );
+	upload( cmd, staticShadowBuffer, staging, staticVertexSize + staticIndexSize, staticShadowList );
+
+	vkEndCommandBuffer(cmd);
+	VkSubmitInfo submitInfo {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &cmd;
+	vkQueueSubmit(vulkan->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	// fixme: this is ugly
+	vkQueueWaitIdle(vulkan->graphicsQueue);
+
+	vkFreeCommandBuffers(vulkan->device, vulkan->commandPool, 1, &cmd);
+
+	GL_SetDebugLabel( GL_BUFFER, staticVertexBuffer.glBuffer, "StaticVertexCache" );
+	GL_SetDebugLabel( GL_BUFFER, staticIndexBuffer.glBuffer, "StaticIndexCache" );
+	GL_SetDebugLabel( GL_BUFFER, staticShadowBuffer.glBuffer, "StaticShadowCache" );
 
 	qglBindBuffer( GL_ARRAY_BUFFER, currentVertexBuffer = 0 );
 	qglBindBuffer( GL_ELEMENT_ARRAY_BUFFER, currentIndexBuffer = 0 );

@@ -6,6 +6,8 @@ class DeviceLocalBuffer;
 class StagingBuffer
 {
 public:
+	~StagingBuffer() { Destroy(); }
+
 	void Init(uint32_t size);
 	void Destroy();
 
