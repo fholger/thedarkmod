@@ -350,6 +350,20 @@ typedef enum _snd_pcm_tstamp_type {
 	SND_PCM_TSTAMP_TYPE_LAST = SND_PCM_TSTAMP_TYPE_MONOTONIC_RAW,
 } snd_pcm_tstamp_type_t;
 
+typedef enum _snd_pcm_audio_tstamp_type {
+	/**
+	 * first definition for backwards compatibility only,
+	 * maps to wallclock/link time for HDAudio playback and DEFAULT/DMA time for everything else
+	 */
+	SND_PCM_AUDIO_TSTAMP_TYPE_COMPAT = 0,
+	SND_PCM_AUDIO_TSTAMP_TYPE_DEFAULT = 1,           /**< DMA time, reported as per hw_ptr */
+	SND_PCM_AUDIO_TSTAMP_TYPE_LINK = 2,	           /**< link time reported by sample or wallclock counter, reset on startup */
+	SND_PCM_AUDIO_TSTAMP_TYPE_LINK_ABSOLUTE = 3,	   /**< link time reported by sample or wallclock counter, not reset on startup */
+	SND_PCM_AUDIO_TSTAMP_TYPE_LINK_ESTIMATED = 4,    /**< link time estimated indirectly */
+	SND_PCM_AUDIO_TSTAMP_TYPE_LINK_SYNCHRONIZED = 5, /**< link time synchronized with system time */
+	SND_PCM_AUDIO_TSTAMP_TYPE_LAST = SND_PCM_AUDIO_TSTAMP_TYPE_LINK_SYNCHRONIZED
+} snd_pcm_audio_tstamp_type_t;
+
 typedef struct _snd_pcm_audio_tstamp_config {
 	/* 5 of max 16 bits used */
 	unsigned int type_requested:4;
@@ -1158,6 +1172,29 @@ int snd_pcm_areas_copy_wrap(const snd_pcm_channel_area_t *dst_channels,
 			    const unsigned int channels,
 			    snd_pcm_uframes_t frames,
 			    const snd_pcm_format_t format);
+
+/**
+ * \brief get the address of the given PCM channel area
+ * \param area PCM channel area
+ * \param offset Offset in frames
+ *
+ * Returns the pointer corresponding to the given offset on the channel area.
+ */
+static inline void *snd_pcm_channel_area_addr(const snd_pcm_channel_area_t *area, snd_pcm_uframes_t offset)
+{
+	return (char *)area->addr + (area->first + area->step * offset) / 8;
+}
+
+/**
+ * \brief get the step size of the given PCM channel area in bytes
+ * \param area PCM channel area
+ *
+ * Returns the step size in bytes from the given channel area.
+ */
+static inline unsigned int snd_pcm_channel_area_step(const snd_pcm_channel_area_t *area)
+{
+	return area->step / 8;
+}
 
 /** \} */
 

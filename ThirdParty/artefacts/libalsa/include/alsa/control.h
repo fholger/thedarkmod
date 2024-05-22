@@ -50,7 +50,32 @@ typedef struct snd_aes_iec958 {
 	unsigned char dig_subframe[4];	/**< AES/IEC958 subframe bits */
 } snd_aes_iec958_t;
 
-/** CTL card info container */
+/** \brief CTL card info container.
+ *
+ * This type contains meta information about a sound card, such as the index,
+ * name, longname, etc.
+ *
+ * \par Memory management
+ *
+ * Before using a snd_ctl_card_info_t object, it must be allocated using
+ * snd_ctl_card_info_alloca() or snd_ctl_card_info_malloc(). When using the
+ * latter, it must be freed again using snd_ctl_card_info_free().
+ *
+ * A card info object can be zeroed out using snd_ctl_card_info_clear().
+ *
+ * A card info object can be copied to another one using
+ * snd_ctl_card_info_copy().
+ *
+ * \par Obtaining the Information
+ *
+ * To obtain the card information, it must first be opened using
+ * snd_ctl_open(), and a snd_ctl_card_info_t container must be
+ * allocated. Then, the information can be read using
+ * snd_ctl_card_info_get_card().
+ *
+ * Thereafter, the card properties can be read using the
+ * snd_ctl_card_info_get_*() functions.
+ */
 typedef struct _snd_ctl_card_info snd_ctl_card_info_t;
 
 /** CTL element identifier container */
@@ -130,7 +155,7 @@ typedef struct _snd_ctl_elem_list snd_ctl_elem_list_t;
 /** CTL element info container */
 typedef struct _snd_ctl_elem_info snd_ctl_elem_info_t;
 
-/** CTL element value container
+/** CTL element value container.
  *
  * Contains the value(s) (i.e. members) of a single element. All
  * values of a given element are of the same type.
@@ -141,6 +166,11 @@ typedef struct _snd_ctl_elem_info snd_ctl_elem_info_t;
  * snd_ctl_elem_value_alloca() or snd_ctl_elem_value_malloc(). When
  * using the latter, it must be freed again using
  * snd_ctl_elem_value_free().
+ *
+ * A value object can be zeroed out using snd_ctl_elem_value_clear().
+ *
+ * A value object can be copied to another one using
+ * snd_ctl_elem_value_copy().
  *
  * \par Identifier
  *
@@ -312,7 +342,9 @@ typedef enum _snd_ctl_type {
 	/** INET client CTL (not yet implemented) */
 	SND_CTL_TYPE_INET,
 	/** External control plugin */
-	SND_CTL_TYPE_EXT
+	SND_CTL_TYPE_EXT,
+	/** Control functionality remapping */
+	SND_CTL_TYPE_REMAP,
 } snd_ctl_type_t;
 
 /** Non blocking mode (flag for open mode) \hideinitializer */
@@ -424,6 +456,8 @@ int snd_ctl_elem_id_malloc(snd_ctl_elem_id_t **ptr);
 void snd_ctl_elem_id_free(snd_ctl_elem_id_t *obj);
 void snd_ctl_elem_id_clear(snd_ctl_elem_id_t *obj);
 void snd_ctl_elem_id_copy(snd_ctl_elem_id_t *dst, const snd_ctl_elem_id_t *src);
+int snd_ctl_elem_id_compare_numid(const snd_ctl_elem_id_t *id1, const snd_ctl_elem_id_t *id2);
+int snd_ctl_elem_id_compare_set(const snd_ctl_elem_id_t *id1, const snd_ctl_elem_id_t *id2);
 unsigned int snd_ctl_elem_id_get_numid(const snd_ctl_elem_id_t *obj);
 snd_ctl_elem_iface_t snd_ctl_elem_id_get_interface(const snd_ctl_elem_id_t *obj);
 unsigned int snd_ctl_elem_id_get_device(const snd_ctl_elem_id_t *obj);
@@ -438,11 +472,20 @@ void snd_ctl_elem_id_set_name(snd_ctl_elem_id_t *obj, const char *val);
 void snd_ctl_elem_id_set_index(snd_ctl_elem_id_t *obj, unsigned int val);
 
 size_t snd_ctl_card_info_sizeof(void);
+
 /** \hideinitializer
- * \brief allocate an invalid #snd_ctl_card_info_t using standard alloca
- * \param ptr returned pointer
+ * \brief Allocate an invalid #snd_ctl_card_info_t on the stack.
+ *
+ * Allocate space for a card info object on the stack. The allocated
+ * memory need not be freed, because it is on the stack.
+ *
+ * See snd_ctl_card_info_t for details.
+ *
+ * \param ptr Pointer to a snd_ctl_elem_value_t pointer. The address
+ *            of the allocated space will returned here.
  */
 #define snd_ctl_card_info_alloca(ptr) __snd_alloca(ptr, snd_ctl_card_info)
+
 int snd_ctl_card_info_malloc(snd_ctl_card_info_t **ptr);
 void snd_ctl_card_info_free(snd_ctl_card_info_t *obj);
 void snd_ctl_card_info_clear(snd_ctl_card_info_t *obj);
@@ -545,6 +588,9 @@ void snd_ctl_elem_info_set_device(snd_ctl_elem_info_t *obj, unsigned int val);
 void snd_ctl_elem_info_set_subdevice(snd_ctl_elem_info_t *obj, unsigned int val);
 void snd_ctl_elem_info_set_name(snd_ctl_elem_info_t *obj, const char *val);
 void snd_ctl_elem_info_set_index(snd_ctl_elem_info_t *obj, unsigned int val);
+void snd_ctl_elem_info_set_read_write(snd_ctl_elem_info_t *obj, int rval, int wval);
+void snd_ctl_elem_info_set_tlv_read_write(snd_ctl_elem_info_t *obj, int rval, int wval);
+void snd_ctl_elem_info_set_inactive(snd_ctl_elem_info_t *obj, int val);
 
 int snd_ctl_add_integer_elem_set(snd_ctl_t *ctl, snd_ctl_elem_info_t *info,
 				 unsigned int element_count,
@@ -580,7 +626,7 @@ size_t snd_ctl_elem_value_sizeof(void);
  * \brief Allocate an invalid #snd_ctl_elem_value_t on the stack.
  *
  * Allocate space for a value object on the stack. The allocated
- * memory need not be freed, because is on the stack.
+ * memory need not be freed, because it is on the stack.
  *
  * See snd_ctl_elem_value_t for details.
  *

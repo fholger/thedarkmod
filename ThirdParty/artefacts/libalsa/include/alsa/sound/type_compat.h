@@ -1,5 +1,5 @@
-#ifndef __TYPE_COMPAT_H
-#define __TYPE_COMPAT_H
+#ifndef __SOUND_TYPE_COMPAT_H
+#define __SOUND_TYPE_COMPAT_H
 
 #ifndef DOC_HIDDEN
 #include <stdint.h>
@@ -44,6 +44,10 @@ typedef int64_t __s64;
 #define __be8  __u8
 #endif
 
+#ifndef __kernel_long_t
+#define __kernel_long_t long
+#endif
+
 #ifndef __user
 #define __user
 #endif
@@ -54,4 +58,4 @@ typedef int64_t __s64;
 
 #endif /* DOC_HIDDEN */
 
-#endif /* __TYPE_COMPAT_H */
+#endif /* __SOUND_TYPE_COMPAT_H */

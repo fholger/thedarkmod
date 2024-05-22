@@ -141,6 +141,7 @@ extern "C" {
 #define SND_USE_CASE_DEV_SPDIF		"SPDIF"		/**< SPDIF Device */
 #define SND_USE_CASE_DEV_HDMI		"HDMI"		/**< HDMI Device */
 #define SND_USE_CASE_DEV_USB		"USB"		/**< USB Device (multifunctional) */
+#define SND_USE_CASE_DEV_DIRECT		"Direct"	/**< Direct Device (no channel remapping), (e.g. ProAudio usage) */
 /* add new devices to end of list */
 
 
@@ -257,6 +258,8 @@ int snd_use_case_get_list(snd_use_case_mgr_t *uc_mgr,
  *   - NULL 		- return current card
  *   - _verb		- return current verb
  *   - _file		- return configuration file loaded for current card
+ *   - _alibcfg		- return private alsa-lib's configuration for current card
+ *   - _alibpref	- return private alsa-lib's configuration device prefix for current card
  *
  *   - [=]{NAME}[/[{modifier}|{/device}][/{verb}]]
  *                      - value identifier {NAME}
@@ -312,6 +315,12 @@ int snd_use_case_get_list(snd_use_case_mgr_t *uc_mgr,
  *      - playback device sample rate
  *   - PlaybackChannels
  *      - playback device channel count
+ *   - PlaybackChannel#
+ *      - describe index of the logical channel in the PCM stream
+ *      - e.g. "PlaybackChannel0 2" - logical channel 0 is third channel in the PCM stream
+ *   - PlaybackChannelPos#
+ *      - describe sound position of the logical channel (ALSA chmap names)
+ *      - e.g. "PlaybackChannel0 FR" - logical channel 0 is at front left
  *   - PlaybackCTL
  *      - playback control device name
  *   - PlaybackVolume
@@ -326,6 +335,12 @@ int snd_use_case_get_list(snd_use_case_mgr_t *uc_mgr,
  *      - capture device sample rate
  *   - CaptureChannels
  *      - capture device channel count
+ *   - CaptureChannel#
+ *      - describe index of the logical channel in the PCM stream
+ *      - e.g. "CaptureChannel0 2" - logical channel 0 is third channel in the PCM stream
+ *   - CaptureChannelPos#
+ *      - describe sound position of the logical channel (ALSA chmap names)
+ *      - e.g. "CaptureChannel0 FR" - logical channel 0 is at front left
  *   - CaptureCTL
  *      - capture control device name
  *   - CaptureVolume
@@ -418,7 +433,10 @@ int snd_use_case_geti(snd_use_case_mgr_t *uc_mgr,
  * \return Zero if success, otherwise a negative error code
  *
  * Known identifiers:
+ *   - _fboot			- execute the fixed boot sequence (value = NULL)
  *   - _boot			- execute the boot sequence (value = NULL)
+ *				   - only when driver controls identifiers are changed
+ *				     (otherwise the old control values are restored)
  *   - _defaults		- execute the 'defaults' sequence (value = NULL)
  *   - _verb			- set current verb = value
  *   - _enadev			- enable given device = value
