@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+	<ImportGroup Label="PropertySheets">
+		<Import Condition="'$(Configuration)' == 'Release' And '$(Platform)' == 'Win32'" Project="conan_mbedtls_libembedtls_release_win32.props"/>
+		<Import Condition="'$(Configuration)' == 'Debug Fast' And '$(Platform)' == 'Win32'" Project="conan_mbedtls_libembedtls_debug fast_win32.props"/>
+		<Import Condition="'$(Configuration)' == 'Sanitize' And '$(Platform)' == 'Win32'" Project="conan_mbedtls_libembedtls_sanitize_win32.props"/>
+		<Import Condition="'$(Configuration)' == 'Debug' And '$(Platform)' == 'Win32'" Project="conan_mbedtls_libembedtls_debug_win32.props"/>
+		<Import Condition="'$(Configuration)' == 'Debug Editable' And '$(Platform)' == 'Win32'" Project="conan_mbedtls_libembedtls_debug editable_win32.props"/>
+	</ImportGroup>
+	<PropertyGroup>
+		<conan_mbedtls_libembedtls_props_imported>True</conan_mbedtls_libembedtls_props_imported>
+	</PropertyGroup>
+</Project>

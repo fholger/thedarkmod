@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+	<ImportGroup Label="PropertySheets">
+		<Import Condition="'$(conan_ffmpeg_avformat_props_imported)' != 'True'" Project="conan_ffmpeg_avformat.props"/>
+		<Import Condition="'$(conan_ffmpeg_avcodec_props_imported)' != 'True'" Project="conan_ffmpeg_avcodec.props"/>
+		<Import Condition="'$(conan_ffmpeg_swscale_props_imported)' != 'True'" Project="conan_ffmpeg_swscale.props"/>
+		<Import Condition="'$(conan_ffmpeg_swresample_props_imported)' != 'True'" Project="conan_ffmpeg_swresample.props"/>
+		<Import Condition="'$(conan_ffmpeg_avutil_props_imported)' != 'True'" Project="conan_ffmpeg_avutil.props"/>
+	</ImportGroup>
+	<PropertyGroup>
+		<conan_ffmpeg_props_imported>True</conan_ffmpeg_props_imported>
+	</PropertyGroup>
+</Project>

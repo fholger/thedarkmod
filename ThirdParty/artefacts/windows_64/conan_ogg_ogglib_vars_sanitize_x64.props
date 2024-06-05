@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="ConanVariables">
+    <Conanogg_ogglibRootFolder>G:/TheDarkMod/darkmod_src/ThirdParty/artefacts/windows_64/../tdm_deploy/ogg</Conanogg_ogglibRootFolder>
+    <Conanogg_ogglibBinaryDirectories></Conanogg_ogglibBinaryDirectories>
+    <Conanogg_ogglibCompilerFlags></Conanogg_ogglibCompilerFlags>
+    <Conanogg_ogglibLinkerFlags></Conanogg_ogglibLinkerFlags>
+    <Conanogg_ogglibPreprocessorDefinitions></Conanogg_ogglibPreprocessorDefinitions>
+    <Conanogg_ogglibIncludeDirectories>$(Conanogg_ogglibRootFolder)/include/;</Conanogg_ogglibIncludeDirectories>
+    <Conanogg_ogglibResourceDirectories></Conanogg_ogglibResourceDirectories>
+    <Conanogg_ogglibLibraryDirectories>$(Conanogg_ogglibRootFolder)/lib/windows64_rel/;</Conanogg_ogglibLibraryDirectories>
+    <Conanogg_ogglibLibraries>ogg.lib;</Conanogg_ogglibLibraries>
+    <Conanogg_ogglibSystemLibs></Conanogg_ogglibSystemLibs>
+  </PropertyGroup>
+</Project>

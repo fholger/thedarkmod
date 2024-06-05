@@ -1,0 +1,1 @@
+. "/mnt/hgfs/thedarkmod/darkmod_src/ThirdParty/artefacts/linux_32/conanrunenv-debug-x86.sh"

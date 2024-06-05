@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="ConanVariables">
+    <Conanlibcurl_curlRootFolder>G:/TheDarkMod/darkmod_src/ThirdParty/artefacts/windows_64/../tdm_deploy/libcurl</Conanlibcurl_curlRootFolder>
+    <Conanlibcurl_curlBinaryDirectories></Conanlibcurl_curlBinaryDirectories>
+    <Conanlibcurl_curlCompilerFlags></Conanlibcurl_curlCompilerFlags>
+    <Conanlibcurl_curlLinkerFlags></Conanlibcurl_curlLinkerFlags>
+    <Conanlibcurl_curlPreprocessorDefinitions>CURL_STATICLIB=1;</Conanlibcurl_curlPreprocessorDefinitions>
+    <Conanlibcurl_curlIncludeDirectories>$(Conanlibcurl_curlRootFolder)/include/;</Conanlibcurl_curlIncludeDirectories>
+    <Conanlibcurl_curlResourceDirectories>$(Conanlibcurl_curlRootFolder)/res;</Conanlibcurl_curlResourceDirectories>
+    <Conanlibcurl_curlLibraryDirectories>$(Conanlibcurl_curlRootFolder)/lib/windows64_rel/;</Conanlibcurl_curlLibraryDirectories>
+    <Conanlibcurl_curlLibraries>libcurl.lib;</Conanlibcurl_curlLibraries>
+    <Conanlibcurl_curlSystemLibs>ws2_32.lib;</Conanlibcurl_curlSystemLibs>
+  </PropertyGroup>
+</Project>

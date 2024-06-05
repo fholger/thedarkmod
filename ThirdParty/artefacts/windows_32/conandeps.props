@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+	<ImportGroup Label="PropertySheets">
+		<Import Condition="'$(conan_tinyformat_props_imported)' != 'True'" Project="conan_tinyformat.props"/>
+		<Import Condition="'$(conan_doctest_props_imported)' != 'True'" Project="conan_doctest.props"/>
+		<Import Condition="'$(conan_tracy_props_imported)' != 'True'" Project="conan_tracy.props"/>
+		<Import Condition="'$(conan_minizip_props_imported)' != 'True'" Project="conan_minizip.props"/>
+		<Import Condition="'$(conan_libcurl_props_imported)' != 'True'" Project="conan_libcurl.props"/>
+		<Import Condition="'$(conan_mbedtls_props_imported)' != 'True'" Project="conan_mbedtls.props"/>
+		<Import Condition="'$(conan_ffmpeg_props_imported)' != 'True'" Project="conan_ffmpeg.props"/>
+		<Import Condition="'$(conan_vorbis_props_imported)' != 'True'" Project="conan_vorbis.props"/>
+		<Import Condition="'$(conan_ogg_props_imported)' != 'True'" Project="conan_ogg.props"/>
+		<Import Condition="'$(conan_fltk_props_imported)' != 'True'" Project="conan_fltk.props"/>
+		<Import Condition="'$(conan_libjpeg_props_imported)' != 'True'" Project="conan_libjpeg.props"/>
+		<Import Condition="'$(conan_libpng_props_imported)' != 'True'" Project="conan_libpng.props"/>
+		<Import Condition="'$(conan_zlib_props_imported)' != 'True'" Project="conan_zlib.props"/>
+		<Import Condition="'$(conan_blake2_props_imported)' != 'True'" Project="conan_blake2.props"/>
+		<Import Condition="'$(conan_glfw_props_imported)' != 'True'" Project="conan_glfw.props"/>
+		<Import Condition="'$(conan_openal_props_imported)' != 'True'" Project="conan_openal.props"/>
+		<Import Condition="'$(conan_pugixml_props_imported)' != 'True'" Project="conan_pugixml.props"/>
+	</ImportGroup>
+</Project>

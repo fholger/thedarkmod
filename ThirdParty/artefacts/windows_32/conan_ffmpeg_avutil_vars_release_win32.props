@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="ConanVariables">
+    <Conanffmpeg_avutilRootFolder>G:/TheDarkMod/darkmod_src/ThirdParty/artefacts/windows_32/../tdm_deploy/ffmpeg</Conanffmpeg_avutilRootFolder>
+    <Conanffmpeg_avutilBinaryDirectories></Conanffmpeg_avutilBinaryDirectories>
+    <Conanffmpeg_avutilCompilerFlags></Conanffmpeg_avutilCompilerFlags>
+    <Conanffmpeg_avutilLinkerFlags></Conanffmpeg_avutilLinkerFlags>
+    <Conanffmpeg_avutilPreprocessorDefinitions></Conanffmpeg_avutilPreprocessorDefinitions>
+    <Conanffmpeg_avutilIncludeDirectories>$(Conanffmpeg_avutilRootFolder)/include/;</Conanffmpeg_avutilIncludeDirectories>
+    <Conanffmpeg_avutilResourceDirectories></Conanffmpeg_avutilResourceDirectories>
+    <Conanffmpeg_avutilLibraryDirectories>$(Conanffmpeg_avutilRootFolder)/lib/windows32_rel/;</Conanffmpeg_avutilLibraryDirectories>
+    <Conanffmpeg_avutilLibraries>avutil.lib;</Conanffmpeg_avutilLibraries>
+    <Conanffmpeg_avutilSystemLibs>user32.lib;bcrypt.lib;</Conanffmpeg_avutilSystemLibs>
+  </PropertyGroup>
+</Project>

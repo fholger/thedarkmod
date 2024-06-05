@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="ConanVariables">
+    <Conanffmpeg_avformatRootFolder>G:/TheDarkMod/darkmod_src/ThirdParty/artefacts/windows_64/../tdm_deploy/ffmpeg</Conanffmpeg_avformatRootFolder>
+    <Conanffmpeg_avformatBinaryDirectories></Conanffmpeg_avformatBinaryDirectories>
+    <Conanffmpeg_avformatCompilerFlags></Conanffmpeg_avformatCompilerFlags>
+    <Conanffmpeg_avformatLinkerFlags></Conanffmpeg_avformatLinkerFlags>
+    <Conanffmpeg_avformatPreprocessorDefinitions></Conanffmpeg_avformatPreprocessorDefinitions>
+    <Conanffmpeg_avformatIncludeDirectories>$(Conanffmpeg_avformatRootFolder)/include/;</Conanffmpeg_avformatIncludeDirectories>
+    <Conanffmpeg_avformatResourceDirectories></Conanffmpeg_avformatResourceDirectories>
+    <Conanffmpeg_avformatLibraryDirectories>$(Conanffmpeg_avformatRootFolder)/lib/windows64_rel/;</Conanffmpeg_avformatLibraryDirectories>
+    <Conanffmpeg_avformatLibraries>avformat.lib;</Conanffmpeg_avformatLibraries>
+    <Conanffmpeg_avformatSystemLibs>secur32.lib;</Conanffmpeg_avformatSystemLibs>
+  </PropertyGroup>
+</Project>

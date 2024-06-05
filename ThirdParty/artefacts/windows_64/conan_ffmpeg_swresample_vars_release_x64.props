@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="ConanVariables">
+    <Conanffmpeg_swresampleRootFolder>G:/TheDarkMod/darkmod_src/ThirdParty/artefacts/windows_64/../tdm_deploy/ffmpeg</Conanffmpeg_swresampleRootFolder>
+    <Conanffmpeg_swresampleBinaryDirectories></Conanffmpeg_swresampleBinaryDirectories>
+    <Conanffmpeg_swresampleCompilerFlags></Conanffmpeg_swresampleCompilerFlags>
+    <Conanffmpeg_swresampleLinkerFlags></Conanffmpeg_swresampleLinkerFlags>
+    <Conanffmpeg_swresamplePreprocessorDefinitions></Conanffmpeg_swresamplePreprocessorDefinitions>
+    <Conanffmpeg_swresampleIncludeDirectories>$(Conanffmpeg_swresampleRootFolder)/include/;</Conanffmpeg_swresampleIncludeDirectories>
+    <Conanffmpeg_swresampleResourceDirectories></Conanffmpeg_swresampleResourceDirectories>
+    <Conanffmpeg_swresampleLibraryDirectories>$(Conanffmpeg_swresampleRootFolder)/lib/windows64_rel/;</Conanffmpeg_swresampleLibraryDirectories>
+    <Conanffmpeg_swresampleLibraries>swresample.lib;</Conanffmpeg_swresampleLibraries>
+    <Conanffmpeg_swresampleSystemLibs></Conanffmpeg_swresampleSystemLibs>
+  </PropertyGroup>
+</Project>

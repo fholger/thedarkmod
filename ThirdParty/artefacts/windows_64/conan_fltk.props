@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+	<ImportGroup Label="PropertySheets">
+		<Import Condition="'$(Configuration)' == 'Release' And '$(Platform)' == 'x64'" Project="conan_fltk_release_x64.props"/>
+		<Import Condition="'$(Configuration)' == 'Debug Fast' And '$(Platform)' == 'x64'" Project="conan_fltk_debug fast_x64.props"/>
+		<Import Condition="'$(Configuration)' == 'Sanitize' And '$(Platform)' == 'x64'" Project="conan_fltk_sanitize_x64.props"/>
+		<Import Condition="'$(Configuration)' == 'Debug' And '$(Platform)' == 'x64'" Project="conan_fltk_debug_x64.props"/>
+		<Import Condition="'$(Configuration)' == 'Debug Editable' And '$(Platform)' == 'x64'" Project="conan_fltk_debug editable_x64.props"/>
+	</ImportGroup>
+	<PropertyGroup>
+		<conan_fltk_props_imported>True</conan_fltk_props_imported>
+	</PropertyGroup>
+</Project>

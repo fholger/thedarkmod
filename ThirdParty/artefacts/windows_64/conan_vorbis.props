@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+	<ImportGroup Label="PropertySheets">
+		<Import Condition="'$(conan_vorbis_vorbismain_props_imported)' != 'True'" Project="conan_vorbis_vorbismain.props"/>
+		<Import Condition="'$(conan_vorbis_vorbisenc_props_imported)' != 'True'" Project="conan_vorbis_vorbisenc.props"/>
+		<Import Condition="'$(conan_vorbis_vorbisfile_props_imported)' != 'True'" Project="conan_vorbis_vorbisfile.props"/>
+		<Import Condition="'$(conan_vorbis_vorbisenc-alias_props_imported)' != 'True'" Project="conan_vorbis_vorbisenc-alias.props"/>
+		<Import Condition="'$(conan_vorbis_vorbisfile-alias_props_imported)' != 'True'" Project="conan_vorbis_vorbisfile-alias.props"/>
+	</ImportGroup>
+	<PropertyGroup>
+		<conan_vorbis_props_imported>True</conan_vorbis_props_imported>
+	</PropertyGroup>
+</Project>

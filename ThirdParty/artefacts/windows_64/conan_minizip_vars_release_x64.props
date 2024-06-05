@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="ConanVariables">
+    <ConanminizipRootFolder>G:/TheDarkMod/darkmod_src/ThirdParty/artefacts/windows_64/../tdm_deploy/minizip</ConanminizipRootFolder>
+    <ConanminizipBinaryDirectories></ConanminizipBinaryDirectories>
+    <ConanminizipCompilerFlags></ConanminizipCompilerFlags>
+    <ConanminizipLinkerFlags></ConanminizipLinkerFlags>
+    <ConanminizipPreprocessorDefinitions></ConanminizipPreprocessorDefinitions>
+    <ConanminizipIncludeDirectories>$(ConanminizipRootFolder)/include/;$(ConanminizipRootFolder)/include/minizip;</ConanminizipIncludeDirectories>
+    <ConanminizipResourceDirectories></ConanminizipResourceDirectories>
+    <ConanminizipLibraryDirectories>$(ConanminizipRootFolder)/lib/windows64_rel/;</ConanminizipLibraryDirectories>
+    <ConanminizipLibraries>minizip.lib;</ConanminizipLibraries>
+    <ConanminizipSystemLibs></ConanminizipSystemLibs>
+  </PropertyGroup>
+</Project>

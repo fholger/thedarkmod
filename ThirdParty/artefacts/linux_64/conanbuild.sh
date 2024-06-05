@@ -1,0 +1,1 @@
+. "/mnt/hgfs/thedarkmod/darkmod_src/ThirdParty/artefacts/linux_64/conanbuildenv-debug-x86_64.sh"

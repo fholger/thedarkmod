@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="ConanVariables">
+    <Conanvorbis_vorbisfile-aliasRootFolder>G:/TheDarkMod/darkmod_src/ThirdParty/artefacts/windows_64/../tdm_deploy/vorbis</Conanvorbis_vorbisfile-aliasRootFolder>
+    <Conanvorbis_vorbisfile-aliasBinaryDirectories></Conanvorbis_vorbisfile-aliasBinaryDirectories>
+    <Conanvorbis_vorbisfile-aliasCompilerFlags></Conanvorbis_vorbisfile-aliasCompilerFlags>
+    <Conanvorbis_vorbisfile-aliasLinkerFlags></Conanvorbis_vorbisfile-aliasLinkerFlags>
+    <Conanvorbis_vorbisfile-aliasPreprocessorDefinitions></Conanvorbis_vorbisfile-aliasPreprocessorDefinitions>
+    <Conanvorbis_vorbisfile-aliasIncludeDirectories>$(Conanvorbis_vorbisfile-aliasRootFolder)/include/;</Conanvorbis_vorbisfile-aliasIncludeDirectories>
+    <Conanvorbis_vorbisfile-aliasResourceDirectories></Conanvorbis_vorbisfile-aliasResourceDirectories>
+    <Conanvorbis_vorbisfile-aliasLibraryDirectories>$(Conanvorbis_vorbisfile-aliasRootFolder)/lib/windows64_rel/;</Conanvorbis_vorbisfile-aliasLibraryDirectories>
+    <Conanvorbis_vorbisfile-aliasLibraries></Conanvorbis_vorbisfile-aliasLibraries>
+    <Conanvorbis_vorbisfile-aliasSystemLibs></Conanvorbis_vorbisfile-aliasSystemLibs>
+  </PropertyGroup>
+</Project>

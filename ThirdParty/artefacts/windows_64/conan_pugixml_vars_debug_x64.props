@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="ConanVariables">
+    <ConanpugixmlRootFolder>G:/TheDarkMod/darkmod_src/ThirdParty/artefacts/windows_64/../tdm_deploy/pugixml</ConanpugixmlRootFolder>
+    <ConanpugixmlBinaryDirectories></ConanpugixmlBinaryDirectories>
+    <ConanpugixmlCompilerFlags></ConanpugixmlCompilerFlags>
+    <ConanpugixmlLinkerFlags></ConanpugixmlLinkerFlags>
+    <ConanpugixmlPreprocessorDefinitions></ConanpugixmlPreprocessorDefinitions>
+    <ConanpugixmlIncludeDirectories>$(ConanpugixmlRootFolder)/include/;</ConanpugixmlIncludeDirectories>
+    <ConanpugixmlResourceDirectories></ConanpugixmlResourceDirectories>
+    <ConanpugixmlLibraryDirectories>$(ConanpugixmlRootFolder)/lib/windows64_dbg/;</ConanpugixmlLibraryDirectories>
+    <ConanpugixmlLibraries>pugixml.lib;</ConanpugixmlLibraries>
+    <ConanpugixmlSystemLibs></ConanpugixmlSystemLibs>
+  </PropertyGroup>
+</Project>

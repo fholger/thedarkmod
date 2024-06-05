@@ -1,0 +1,1 @@
+. "/mnt/hgfs/thedarkmod/darkmod_src/ThirdParty/artefacts/linux_64/deactivate_conanrunenv-debug-x86_64.sh"

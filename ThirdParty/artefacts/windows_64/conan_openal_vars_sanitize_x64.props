@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="ConanVariables">
+    <ConanopenalRootFolder>G:/TheDarkMod/darkmod_src/ThirdParty/artefacts/windows_64/../tdm_deploy/openal</ConanopenalRootFolder>
+    <ConanopenalBinaryDirectories></ConanopenalBinaryDirectories>
+    <ConanopenalCompilerFlags></ConanopenalCompilerFlags>
+    <ConanopenalLinkerFlags></ConanopenalLinkerFlags>
+    <ConanopenalPreprocessorDefinitions>AL_LIBTYPE_STATIC;</ConanopenalPreprocessorDefinitions>
+    <ConanopenalIncludeDirectories>$(ConanopenalRootFolder)/include/;$(ConanopenalRootFolder)/include/AL;</ConanopenalIncludeDirectories>
+    <ConanopenalResourceDirectories></ConanopenalResourceDirectories>
+    <ConanopenalLibraryDirectories>$(ConanopenalRootFolder)/lib/windows64_rel/;</ConanopenalLibraryDirectories>
+    <ConanopenalLibraries>OpenAL32.lib;</ConanopenalLibraries>
+    <ConanopenalSystemLibs>winmm.lib;ole32.lib;shell32.lib;user32.lib;</ConanopenalSystemLibs>
+  </PropertyGroup>
+</Project>
