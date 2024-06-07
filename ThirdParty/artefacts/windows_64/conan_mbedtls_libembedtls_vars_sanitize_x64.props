@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="ConanVariables">
-    <Conanmbedtls_libembedtlsRootFolder>G:/TheDarkMod/darkmod_src/ThirdParty/artefacts/windows_64/../tdm_deploy/mbedtls</Conanmbedtls_libembedtlsRootFolder>
+    <Conanmbedtls_libembedtlsRootFolder>$(MSBuildThisFileDirectory)/../tdm_deploy/mbedtls</Conanmbedtls_libembedtlsRootFolder>
     <Conanmbedtls_libembedtlsBinaryDirectories></Conanmbedtls_libembedtlsBinaryDirectories>
     <Conanmbedtls_libembedtlsCompilerFlags></Conanmbedtls_libembedtlsCompilerFlags>
     <Conanmbedtls_libembedtlsLinkerFlags></Conanmbedtls_libembedtlsLinkerFlags>

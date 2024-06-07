@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="ConanVariables">
-    <Conanffmpeg_avformatRootFolder>G:/TheDarkMod/darkmod_src/ThirdParty/artefacts/windows_32/../tdm_deploy/ffmpeg</Conanffmpeg_avformatRootFolder>
+    <Conanffmpeg_avformatRootFolder>$(MSBuildThisFileDirectory)/../tdm_deploy/ffmpeg</Conanffmpeg_avformatRootFolder>
     <Conanffmpeg_avformatBinaryDirectories></Conanffmpeg_avformatBinaryDirectories>
     <Conanffmpeg_avformatCompilerFlags></Conanffmpeg_avformatCompilerFlags>
     <Conanffmpeg_avformatLinkerFlags></Conanffmpeg_avformatLinkerFlags>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="ConanVariables">
-    <Conanblake2RootFolder>G:/TheDarkMod/darkmod_src/ThirdParty/artefacts/windows_64/../tdm_deploy/blake2</Conanblake2RootFolder>
+    <Conanblake2RootFolder>$(MSBuildThisFileDirectory)/../tdm_deploy/blake2</Conanblake2RootFolder>
     <Conanblake2BinaryDirectories></Conanblake2BinaryDirectories>
     <Conanblake2CompilerFlags></Conanblake2CompilerFlags>
     <Conanblake2LinkerFlags></Conanblake2LinkerFlags>

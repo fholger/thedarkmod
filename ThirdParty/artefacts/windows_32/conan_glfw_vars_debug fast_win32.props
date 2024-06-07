@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="ConanVariables">
-    <ConanglfwRootFolder>G:/TheDarkMod/darkmod_src/ThirdParty/artefacts/windows_32/../tdm_deploy/glfw</ConanglfwRootFolder>
+    <ConanglfwRootFolder>$(MSBuildThisFileDirectory)/../tdm_deploy/glfw</ConanglfwRootFolder>
     <ConanglfwBinaryDirectories></ConanglfwBinaryDirectories>
     <ConanglfwCompilerFlags></ConanglfwCompilerFlags>
     <ConanglfwLinkerFlags></ConanglfwLinkerFlags>
